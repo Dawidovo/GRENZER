@@ -1,0 +1,19 @@
+{
+  "travelers": [
+    {
+      "id": "test_001",
+      "name": "Mueller",
+      "vorname": "Hans",
+      "geburtsdatum": "1955-03-15",
+      "documents": {
+        "personalausweis": {
+          "pkz": "150355123456",
+          "gueltig_bis": "1989-12-31",
+          "is_valid": true
+        }
+      },
+      "story": "Routinebesuch bei Verwandten",
+      "difficulty": "easy"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": "MVP_1.0",
+  "documents": {
+    "personalausweis": {
+      "required_fields": ["name", "vorname", "geburtsdatum", "pkz", "gueltig_bis"],
+      "validation_rules": {
+        "pkz_format": "12 Ziffern",
+        "ablaufdatum_check": true
+      }
+    },
+    "reisepass": {
+      "required_fields": ["name", "vorname", "passnummer", "gueltig_bis"],
+      "needs_visum": true
+    }
+  },
+  "stamp_locations": ["Marienborn", "Friedrichstraße"],
+  "common_forgery_types": ["foto_mismatch", "altered_date", "fake_stamp"]
+}
