@@ -1,19 +1,19 @@
 {
   "days": {
-    "1": {
-      "active_rules": ["check_expiry"],
-      "quota": 10,
-      "documents_required": ["personalausweis"]
-    },
-    "2": {
-      "active_rules": ["check_expiry", "check_photo"],
-      "quota": 12,
-      "documents_required": ["personalausweis"]
-    },
-    "3": {
-      "active_rules": ["check_expiry", "check_photo", "check_pkz"],
-      "quota": 15,
-      "documents_required": ["personalausweis", "reisepass"]
-    }
+	"1": {
+	  "active_rules": ["check_expiry"],
+	  "quota": 10,
+	  "documents_required": ["personalausweis"]
+	},
+	"2": {
+	  "active_rules": ["check_expiry", "check_photo"],
+	  "quota": 12,
+	  "documents_required": ["personalausweis"]
+	},
+	"3": {
+	  "active_rules": ["check_expiry", "check_photo", "check_pkz"],
+	  "quota": 15,
+	  "documents_required": ["personalausweis", "reisepass"]
+	}
   }
 }

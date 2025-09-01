@@ -1,6 +1,5 @@
 extends Node
 class_name ValidationEngine
-const Document = preload("res://scripts/documents/Document.gd")
 
 # Validation result structure
 class ValidationResult:
@@ -76,12 +75,12 @@ func _get_required_documents(nationality: String) -> Array:
 
 # Check if all required documents are present
 func _check_required_documents(result: ValidationResult, required: Array, presented: Array):
-        var presented_types = []
-        for doc in presented:
-                if doc is Document:
-                        presented_types.append(doc.type)
-                else:
-                        presented_types.append(doc.get("type", "unknown"))
+	var presented_types = []
+	for doc in presented:
+		if doc.has_method("to_dict"):
+			presented_types.append(doc.type)
+		else:
+			presented_types.append(doc.get("type", "unknown"))
 	
 	for req_doc in required:
 		if not req_doc in presented_types:
@@ -89,34 +88,34 @@ func _check_required_documents(result: ValidationResult, required: Array, presen
 
 # Validate individual document
 func _validate_document(result: ValidationResult, doc: Variant, traveler_data: Dictionary):
-        var data: Dictionary = {}
-        if doc is Document:
-                data = doc.to_dict()
-        else:
-                data = doc
-        var doc_type = data.get("type", "unknown")
+	var data: Dictionary = {}
+	if doc.has_method("to_dict"):
+		data = doc.to_dict()
+	else:
+		data = doc
+	var doc_type = data.get("type", "unknown")
 	
 	# Check expiry date
-        if current_rules.check_expiry:
-                _check_expiry_date(result, data, doc_type)
+	if current_rules.check_expiry:
+		_check_expiry_date(result, data, doc_type)
 	
 	# Check photo match
-        if current_rules.check_photo and data.has("foto"):
-                _check_photo_match(result, data, traveler_data)
+	if current_rules.check_photo and data.has("foto"):
+		_check_photo_match(result, data, traveler_data)
 	
 	# Check personal data consistency
-        _check_data_consistency(result, data, traveler_data)
+	_check_data_consistency(result, data, traveler_data)
 	
 	# Check PKZ (Personenkennzahl) for DDR documents
-        if current_rules.check_pkz and doc_type == "personalausweis":
-                _check_pkz(result, data, traveler_data)
+	if current_rules.check_pkz and doc_type == "personalausweis":
+		_check_pkz(result, data, traveler_data)
 	
 	# Check stamps
-        if current_rules.check_stamps and data.has("stamps"):
-                _check_stamps(result, data)
+	if current_rules.check_stamps and data.has("stamps"):
+		_check_stamps(result, data)
 	
 	# Check for forgeries
-        _check_forgery_indicators(result, data)
+	_check_forgery_indicators(result, data)
 
 # Check document expiry
 func _check_expiry_date(result: ValidationResult, doc: Dictionary, doc_type: String):
@@ -161,7 +160,9 @@ func _check_pkz(result: ValidationResult, doc: Dictionary, traveler_data: Dictio
 	var pkz = doc["pkz"]
 	
 	# PKZ format: DDMMYYXXXXXX (12 digits)
-	if not pkz.match("^[0-9]{12}$"):
+	var regex = RegEx.new()
+	regex.compile("^[0-9]{12}$")
+	if not regex.search(pkz):
 		result.add_violation("invalid_pkz_format", "PKZ must be 12 digits")
 		return
 	
@@ -227,20 +228,20 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 	
 	# Check PM-12 restriction (no border crossing)
 	if current_rules.check_pm12 and nationality == "DDR":
-                for doc in docs:
-                        var d = doc.to_dict() if doc is Document else doc
-                        if d.get("type") == "personalausweis":
-                                if d.get("pm12_vermerk", false):
-                                        result.add_violation("pm12_restriction", "Border crossing prohibited")
+		for doc in docs:
+			var d = doc.to_dict() if doc.has_method("to_dict") else doc
+			if d.get("type") == "personalausweis":
+				if d.get("pm12_vermerk", false):
+					result.add_violation("pm12_restriction", "Border crossing prohibited")
 	
 	# Check Ausreisegenehmigung for DDR citizens leaving
 	if nationality == "DDR" and traveler_data.get("direction", "") == "ausreise":
 		var has_ausreise = false
-                for doc in docs:
-                        var d2 = doc.to_dict() if doc is Document else doc
-                        if d2.get("type") == "ausreisegenehmigung":
-                                has_ausreise = true
-                                break
+		for doc in docs:
+			var d2 = doc.to_dict() if doc.has_method("to_dict") else doc
+			if d2.get("type") == "ausreisegenehmigung":
+				has_ausreise = true
+				break
 		
 		if not has_ausreise:
 			result.add_violation("missing_ausreisegenehmigung", "DDR citizens need exit permit")
@@ -248,13 +249,13 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 	# Check transit visa for West Germans
 	if nationality == "BRD":
 		var has_transit = false
-                for doc in docs:
-                        var d3 = doc.to_dict() if doc is Document else doc
-                        if d3.get("type") == "transitvisum":
-                                has_transit = true
-                                if d3.get("route_restriction", "") == "direct_only":
-                                        result.add_warning("transit_restriction", "Must use direct route only")
-                                break
+		for doc in docs:
+			var d3 = doc.to_dict() if doc.has_method("to_dict") else doc
+			if d3.get("type") == "transitvisum":
+				has_transit = true
+				if d3.get("route_restriction", "") == "direct_only":
+					result.add_warning("transit_restriction", "Must use direct route only")
+				break
 		
 		if not has_transit:
 			result.add_violation("missing_transitvisum", "West Germans need transit visa")
@@ -289,7 +290,13 @@ func _check_republikflucht_risk(result: ValidationResult, traveler_data: Diction
 		risk_factors.append("previous_denials")
 	
 	if risk_score >= 3:
-		result.add_warning("republikflucht_risk", risk_factors.join(", "))
+		# In GDScript we join arrays differently
+		var factors_text = ""
+		for i in range(risk_factors.size()):
+			factors_text += risk_factors[i]
+			if i < risk_factors.size() - 1:
+				factors_text += ", "
+		result.add_warning("republikflucht_risk", factors_text)
 
 # Utility: Check if date is expired
 func _is_date_expired(date1: String, date2: String) -> bool:
