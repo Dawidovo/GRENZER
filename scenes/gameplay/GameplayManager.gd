@@ -11,6 +11,7 @@ extends Control
 
 # NEU: Validation Engine
 var validation_engine: ValidationEngine
+var DocumentFactory = preload("res://scripts/documents/DocumentFactory.gd")
 
 # Spiel-Daten
 var current_traveler = {}
@@ -226,46 +227,46 @@ func _get_current_documents() -> Array:
 	
 	# Basierend auf Nationalität verschiedene Dokumente
 	if current_traveler.nationality == "DDR":
-		docs.append({
-			"type": "personalausweis",
-			"name": current_traveler.get("name", "Mueller"),
-			"vorname": current_traveler.get("vorname", "Max"),
-			"geburtsdatum": current_traveler.get("geburtsdatum", "1955-03-15"),
-			"pkz": _generate_pkz(current_traveler.get("geburtsdatum", "1955-03-15")),
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
-			"foto": current_traveler.get("appearance", {}).get("foto", "photo_001"),
-			"pm12_vermerk": false  # Später: Zufällig oder story-basiert
-		})
+                docs.append(DocumentFactory.from_dict({
+                        "type": "personalausweis",
+                        "name": current_traveler.get("name", "Mueller"),
+                        "vorname": current_traveler.get("vorname", "Max"),
+                        "geburtsdatum": current_traveler.get("geburtsdatum", "1955-03-15"),
+                        "pkz": _generate_pkz(current_traveler.get("geburtsdatum", "1955-03-15")),
+                        "gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
+                        "foto": current_traveler.get("appearance", {}).get("foto", "photo_001"),
+                        "pm12_vermerk": false
+                }))
 	elif current_traveler.nationality == "Polen":
-		docs.append({
-			"type": "reisepass",
-			"name": current_traveler.get("name", "Kowalski"),
-			"vorname": current_traveler.get("vorname", "Jan"),
-			"passnummer": "PL1234567",
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
-			"foto": current_traveler.get("appearance", {}).get("foto", "photo_001")
-		})
+                docs.append(DocumentFactory.from_dict({
+                        "type": "reisepass",
+                        "name": current_traveler.get("name", "Kowalski"),
+                        "vorname": current_traveler.get("vorname", "Jan"),
+                        "passnummer": "PL1234567",
+                        "gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
+                        "foto": current_traveler.get("appearance", {}).get("foto", "photo_001")
+                }))
 		# Polen brauchen auch Visum
 		if current_traveler.documents_valid:
-			docs.append({
-				"type": "visum",
-				"holder_name": current_traveler.get("name", "Kowalski"),
-				"valid_until": "1989-12-31"
-			})
+                        docs.append(DocumentFactory.from_dict({
+                                "type": "visum",
+                                "holder_name": current_traveler.get("name", "Kowalski"),
+                                "valid_until": "1989-12-31"
+                        }))
 	else:  # BRD oder andere
-		docs.append({
-			"type": "reisepass",
-			"name": current_traveler.get("name", "Müller"),
-			"vorname": current_traveler.get("vorname", "Hans"),
-			"passnummer": "D1234567",
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01"
-		})
-		if current_traveler.nationality == "BRD":
-			docs.append({
-				"type": "transitvisum",
-				"holder_name": current_traveler.get("name", "Müller"),
-				"route_restriction": "direct_only"
-			})
+                docs.append(DocumentFactory.from_dict({
+                        "type": "reisepass",
+                        "name": current_traveler.get("name", "Müller"),
+                        "vorname": current_traveler.get("vorname", "Hans"),
+                        "passnummer": "D1234567",
+                        "gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01"
+                }))
+                if current_traveler.nationality == "BRD":
+                        docs.append(DocumentFactory.from_dict({
+                                "type": "transitvisum",
+                                "holder_name": current_traveler.get("name", "Müller"),
+                                "route_restriction": "direct_only"
+                        }))
 	
 	return docs
 
