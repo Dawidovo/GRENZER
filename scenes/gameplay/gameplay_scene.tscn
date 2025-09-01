@@ -37,6 +37,7 @@ offset_right = 8.0
 offset_bottom = 8.0
 
 [node name="RejectButton" type="Button" parent="ButtonArea"]
+layout_mode = 0
 offset_right = 8.0
 offset_bottom = 8.0
 
@@ -46,5 +47,6 @@ offset_right = 40.0
 offset_bottom = 23.0
 
 [node name="StatusInfo" type="Label" parent="."]
+layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
