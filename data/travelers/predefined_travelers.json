@@ -1,0 +1,389 @@
+{
+  "version": "1.0",
+  "total_travelers": 30,
+  "categories": {
+    "valid": 10,
+    "invalid": 11,
+    "edge_cases": 9
+  },
+  "travelers": [
+    {
+      "category": "VALID_CASES",
+      "cases": [
+        {
+          "id": "valid_001",
+          "name": "Mueller",
+          "vorname": "Hans",
+          "age": 45,
+          "nationality": "DDR",
+          "geburtsdatum": "1944-03-15",
+          "geschlecht": "M",
+          "purpose": "Familienbesuch",
+          "direction": "ausreise",
+          "expected_result": "APPROVE",
+          "description": "Standard DDR Bürger mit allen gültigen Dokumenten"
+        },
+        {
+          "id": "valid_002",
+          "name": "Schmidt",
+          "vorname": "Ingrid",
+          "age": 32,
+          "nationality": "DDR",
+          "geburtsdatum": "1957-07-22",
+          "geschlecht": "F",
+          "purpose": "Geschäftsreise",
+          "expected_result": "APPROVE",
+          "description": "Geschäftsreisende mit Genehmigung"
+        },
+        {
+          "id": "valid_003",
+          "name": "Kowalski",
+          "vorname": "Jan",
+          "age": 28,
+          "nationality": "Polen",
+          "geburtsdatum": "1961-01-10",
+          "purpose": "Transit",
+          "expected_result": "APPROVE",
+          "description": "Polnischer Staatsbürger mit Transitvisum"
+        },
+        {
+          "id": "valid_004",
+          "name": "Weber",
+          "vorname": "Klaus",
+          "age": 55,
+          "nationality": "DDR",
+          "geburtsdatum": "1934-05-20",
+          "purpose": "Rentnerreise",
+          "expected_result": "APPROVE",
+          "description": "Rentner mit Sondergenehmigung"
+        },
+        {
+          "id": "valid_005",
+          "name": "Nowak",
+          "vorname": "Maria",
+          "age": 41,
+          "nationality": "Polen",
+          "purpose": "Handel",
+          "expected_result": "APPROVE",
+          "description": "Handelsvertreterin mit Geschäftsvisum"
+        },
+        {
+          "id": "valid_006",
+          "name": "Müller",
+          "vorname": "Thomas",
+          "age": 35,
+          "nationality": "BRD",
+          "purpose": "Familienbesuch",
+          "expected_result": "APPROVE",
+          "description": "West-Berliner mit Tagesvisum"
+        },
+        {
+          "id": "valid_007",
+          "name": "Becker",
+          "vorname": "Helga",
+          "age": 48,
+          "nationality": "DDR",
+          "purpose": "Kulturreise",
+          "expected_result": "APPROVE",
+          "description": "Kulturdelegation Mitglied"
+        },
+        {
+          "id": "valid_008",
+          "name": "Wagner",
+          "vorname": "Dieter",
+          "age": 38,
+          "nationality": "DDR",
+          "purpose": "Sportveranstaltung",
+          "expected_result": "APPROVE",
+          "description": "Sportler mit Wettkampfgenehmigung"
+        },
+        {
+          "id": "valid_009",
+          "name": "Klein",
+          "vorname": "Monika",
+          "age": 29,
+          "nationality": "DDR",
+          "purpose": "Medizinische Behandlung",
+          "expected_result": "APPROVE",
+          "description": "Medizinische Sondergenehmigung"
+        },
+        {
+          "id": "valid_010",
+          "name": "Hoffmann",
+          "vorname": "Peter",
+          "age": 42,
+          "nationality": "DDR",
+          "purpose": "Wissenschaftliche Konferenz",
+          "expected_result": "APPROVE",
+          "description": "Wissenschaftler mit Konferenzeinladung"
+        }
+      ]
+    },
+    {
+      "category": "INVALID_EXPIRED",
+      "cases": [
+        {
+          "id": "invalid_expired_001",
+          "name": "Schulz",
+          "vorname": "Werner",
+          "age": 36,
+          "nationality": "DDR",
+          "error": "expired_personalausweis",
+          "expected_result": "REJECT",
+          "description": "Personalausweis 6 Monate abgelaufen"
+        },
+        {
+          "id": "invalid_expired_002",
+          "name": "Wisniewski",
+          "vorname": "Piotr",
+          "age": 31,
+          "nationality": "Polen",
+          "error": "expired_visa",
+          "expected_result": "REJECT",
+          "description": "Visum gestern abgelaufen"
+        },
+        {
+          "id": "invalid_expired_003",
+          "name": "Meyer",
+          "vorname": "Brigitte",
+          "age": 44,
+          "nationality": "DDR",
+          "error": "expired_ausreise",
+          "expected_result": "REJECT",
+          "description": "Ausreisegenehmigung überschritten"
+        },
+        {
+          "id": "invalid_expired_004",
+          "name": "Fischer",
+          "vorname": "Michael",
+          "age": 39,
+          "nationality": "BRD",
+          "error": "expired_transit",
+          "expected_result": "REJECT",
+          "description": "Transitvisum abgelaufen"
+        },
+        {
+          "id": "invalid_expired_005",
+          "name": "Wolf",
+          "vorname": "Christa",
+          "age": 52,
+          "nationality": "DDR",
+          "error": "expired_reisepass",
+          "expected_result": "REJECT",
+          "description": "Reisepass seit einem Jahr ungültig"
+        }
+      ]
+    },
+    {
+      "category": "INVALID_PHOTO",
+      "cases": [
+        {
+          "id": "invalid_photo_001",
+          "name": "Neumann",
+          "vorname": "Karl",
+          "age": 47,
+          "nationality": "DDR",
+          "error": "photo_mismatch",
+          "expected_result": "REJECT",
+          "description": "Foto stimmt nicht mit Person überein"
+        },
+        {
+          "id": "invalid_photo_002",
+          "name": "Kaminski",
+          "vorname": "Anna",
+          "age": 26,
+          "nationality": "Polen",
+          "error": "photo_switched",
+          "expected_result": "REJECT",
+          "description": "Verwendet Ausweis ihrer Schwester"
+        },
+        {
+          "id": "invalid_photo_003",
+          "name": "Schwarz",
+          "vorname": "Uwe",
+          "age": 33,
+          "nationality": "DDR",
+          "error": "photo_forged",
+          "expected_result": "REJECT",
+          "description": "Gefälschtes Foto im Ausweis"
+        }
+      ]
+    },
+    {
+      "category": "INVALID_MISSING",
+      "cases": [
+        {
+          "id": "invalid_missing_001",
+          "name": "Zimmermann",
+          "vorname": "Frank",
+          "age": 30,
+          "nationality": "DDR",
+          "error": "missing_ausreise",
+          "expected_result": "REJECT",
+          "description": "Keine Ausreisegenehmigung vorhanden"
+        },
+        {
+          "id": "invalid_missing_002",
+          "name": "Lewandowski",
+          "vorname": "Krzysztof",
+          "age": 34,
+          "nationality": "Polen",
+          "error": "missing_visa",
+          "expected_result": "REJECT",
+          "description": "Visum fehlt"
+        },
+        {
+          "id": "invalid_missing_003",
+          "name": "Schneider",
+          "vorname": "Petra",
+          "age": 27,
+          "nationality": "BRD",
+          "error": "missing_transit",
+          "expected_result": "REJECT",
+          "description": "Transitvisum nicht vorhanden"
+        }
+      ]
+    },
+    {
+      "category": "EDGE_CASES",
+      "cases": [
+        {
+          "id": "edge_watchlist_001",
+          "name": "Schmidt",
+          "vorname": "Werner",
+          "age": 31,
+          "nationality": "DDR",
+          "special": "on_watchlist",
+          "expected_result": "REJECT",
+          "description": "Auf Fahndungsliste wegen Republikfluchtversuch"
+        },
+        {
+          "id": "edge_pm12_001",
+          "name": "Krueger",
+          "vorname": "Manfred",
+          "age": 40,
+          "nationality": "DDR",
+          "special": "pm12_vermerk",
+          "expected_result": "REJECT",
+          "description": "PM-12 Vermerk - keine Grenzüberquerung erlaubt"
+        },
+        {
+          "id": "edge_child_001",
+          "name": "Braun",
+          "vorname": "Lisa",
+          "age": 8,
+          "nationality": "DDR",
+          "special": "minor_traveling",
+          "expected_result": "SPECIAL_CHECK",
+          "description": "Minderjährige reist mit Eltern"
+        },
+        {
+          "id": "edge_diplomat_001",
+          "name": "Petrov",
+          "vorname": "Alexei",
+          "age": 45,
+          "nationality": "UdSSR",
+          "special": "diplomatic_immunity",
+          "expected_result": "APPROVE",
+          "description": "Sowjetischer Diplomat mit Immunität"
+        },
+        {
+          "id": "edge_expired_today_001",
+          "name": "Hofmann",
+          "vorname": "Gisela",
+          "age": 37,
+          "nationality": "DDR",
+          "special": "expires_today",
+          "expected_result": "REJECT",
+          "description": "Ausweis läuft heute ab"
+        },
+        {
+          "id": "edge_republikflucht_001",
+          "name": "Hartmann",
+          "vorname": "Familie",
+          "age": 35,
+          "nationality": "DDR",
+          "special": "republikflucht_risk",
+          "expected_result": "DETAIN",
+          "description": "Ganze Familie mit viel Gepäck - Fluchtgefahr"
+        },
+        {
+          "id": "edge_forged_001",
+          "name": "Lange",
+          "vorname": "Stefan",
+          "age": 29,
+          "nationality": "DDR",
+          "special": "professional_forgery",
+          "expected_result": "DETAIN",
+          "description": "Professionell gefälschte Dokumente"
+        },
+        {
+          "id": "edge_wrong_pkz_001",
+          "name": "Koch",
+          "vorname": "Andreas",
+          "age": 32,
+          "nationality": "DDR",
+          "special": "pkz_mismatch",
+          "expected_result": "REJECT",
+          "description": "PKZ stimmt nicht mit Geburtsdatum überein"
+        },
+        {
+          "id": "edge_multiple_nationalities_001",
+          "name": "Mueller-Smith",
+          "vorname": "John-Hans",
+          "age": 38,
+          "nationality": "DDR/USA",
+          "special": "dual_nationality",
+          "expected_result": "SPECIAL_CHECK",
+          "description": "Doppelte Staatsbürgerschaft - komplizierter Fall"
+        }
+      ]
+    }
+  ],
+  "test_scenarios": {
+    "day_1": {
+      "rules": ["check_expiry"],
+      "test_cases": ["valid_001", "invalid_expired_001"]
+    },
+    "day_3": {
+      "rules": ["check_expiry", "check_photo"],
+      "test_cases": ["valid_002", "invalid_photo_001"]
+    },
+    "day_5": {
+      "rules": ["check_expiry", "check_photo", "check_pkz"],
+      "test_cases": ["valid_003", "edge_wrong_pkz_001"]
+    },
+    "day_7": {
+      "rules": ["check_expiry", "check_photo", "check_pkz", "check_stamps"],
+      "test_cases": ["valid_004", "edge_forged_001"]
+    },
+    "day_10": {
+      "rules": ["all_rules_active", "check_pm12"],
+      "test_cases": ["valid_005", "edge_pm12_001", "edge_republikflucht_001"]
+    }
+  },
+  "statistics": {
+    "nationalities": {
+      "DDR": 19,
+      "Polen": 5,
+      "BRD": 4,
+      "UdSSR": 1,
+      "Mixed": 1
+    },
+    "error_types": {
+      "expired": 5,
+      "photo_mismatch": 3,
+      "missing_document": 3,
+      "watchlist": 1,
+      "pm12": 1,
+      "forgery": 1,
+      "pkz_error": 1
+    },
+    "expected_results": {
+      "APPROVE": 11,
+      "REJECT": 16,
+      "DETAIN": 2,
+      "SPECIAL_CHECK": 1
+    }
+  }
+}

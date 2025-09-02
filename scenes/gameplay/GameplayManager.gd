@@ -9,326 +9,447 @@ extends Control
 @onready var traveler_info = $TravelerInfo
 @onready var status_info = $StatusInfo
 
-# NEU: Validation Engine
+# Core Systems
 var validation_engine: ValidationEngine
-var DocumentFactory = preload("res://scripts/documents/DocumentFactory.gd")
+var traveler_generator: TravelerGenerator
+const ValidationEngine = preload("res://scripts/ValidationEngine.gd")
+const TravelerGenerator = preload("res://scripts/TravelerGenerator.gd")
+const DocumentFactory = preload("res://scripts/documents/DocumentFactory.gd")
 
-# Spiel-Daten
+# Game State
 var current_traveler = {}
 var day_counter = 1
 var approved_count = 0
 var rejected_count = 0
+var mistakes_count = 0
 var current_traveler_index = 0
+var daily_quota = 10
+var daily_travelers_processed = 0
 
-# ERWEITERTE DDR Reisende Datenbank (mehr Details hinzugefügt)
-var travelers_database = [
-	{
-		"name": "Mueller",  # GEÄNDERT: Nachname zuerst
-		"vorname": "Hans",  # NEU: Vorname separat
-		"age": 34,
-		"nationality": "DDR",
-		"geburtsdatum": "1955-03-15",  # NEU: Für PKZ-Check
-		"purpose": "Besuch bei Familie",
-		"direction": "ausreise",  # NEU: Ein- oder Ausreise
-		"documents_valid": true,
-		"story": "Möchte seine Schwester in West-Berlin besuchen.",
-		"appearance": {"foto": "photo_001"}  # NEU: Für Foto-Check
-	},
-	{
-		"name": "Schmidt",
-		"vorname": "Maria", 
-		"age": 28,
-		"nationality": "Polen",
-		"geburtsdatum": "1961-07-22",
-		"purpose": "Durchreise",
-		"direction": "einreise",
-		"documents_valid": false,
-		"story": "Reisepass abgelaufen seit 2 Monaten.",
-		"appearance": {"foto": "photo_002"}
-	},
-	{
-		"name": "Weber",
-		"vorname": "Klaus",
-		"age": 45, 
-		"nationality": "DDR",
-		"geburtsdatum": "1944-01-10",
-		"purpose": "Geschäftsreise",
-		"direction": "ausreise",
-		"documents_valid": true,
-		"story": "Staatlich genehmigte Dienstreise nach Moskau.",
-		"appearance": {"foto": "photo_003"}
-	},
-	{
-		# NEU: Fahndungslisten-Test
-		"name": "Schmidt",
-		"vorname": "Werner",
-		"age": 31,
-		"nationality": "DDR",
-		"geburtsdatum": "1958-05-20",
-		"purpose": "Familienbesuch",
-		"direction": "ausreise",
-		"documents_valid": true,
-		"story": "Auf Fahndungsliste wegen Republikfluchtversuch!",
-		"appearance": {"foto": "photo_004"}
-	}
-]
+# Game Statistics
+var game_stats = {
+	"total_processed": 0,
+	"correct_decisions": 0,
+	"incorrect_decisions": 0,
+	"accuracy_rate": 100.0,
+	"detained": 0,
+	"special_cases_handled": 0
+}
+
+# Difficulty progression
+var difficulty_settings = {
+	1: {"quota": 10, "valid_ratio": 0.8, "use_predefined": true},
+	2: {"quota": 12, "valid_ratio": 0.7, "use_predefined": true},
+	3: {"quota": 15, "valid_ratio": 0.6, "use_predefined": false},
+	4: {"quota": 18, "valid_ratio": 0.5, "use_predefined": false},
+	5: {"quota": 20, "valid_ratio": 0.4, "use_predefined": false}
+}
 
 func _ready():
-	print("DDR Grenzposten bereit!")
+	print("=== DDR GRENZPOSTEN SIMULATOR ===")
+	print("Tag %d beginnt..." % day_counter)
 	
-	# NEU: ValidationEngine laden
-	var ValidationEngineScript = load("res://scripts/ValidationEngine.gd")
-	validation_engine = ValidationEngineScript.new()
+	# Initialize systems
+	validation_engine = ValidationEngine.new()
+	traveler_generator = TravelerGenerator.new()
+	
+	# Set initial rules for day 1
 	validation_engine.update_rules_for_day(day_counter)
 	
-	# Warten bis alle Nodes geladen sind
+	# Setup UI
 	await get_tree().process_frame
 	setup_ui()
-	load_next_traveler()
 	
-	# Button Signale verbinden
+	# Start game
+	start_new_day()
+	
+	# Connect button signals
 	approve_button.pressed.connect(_on_approve_pressed)
 	reject_button.pressed.connect(_on_reject_pressed)
 
 func setup_ui():
-	# Vollbild UI
+	# Fullscreen UI
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
-	# Hintergrund
-	background.color = Color(0.2, 0.3, 0.2, 1.0)  # DDR-Grün
+	# Background
+	background.color = Color(0.2, 0.3, 0.2, 1.0)  # DDR Green
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	
-	# Dokument-Bereich
+	# Document area
 	document_area.position = Vector2(50, 100)
-	document_area.size = Vector2(400, 300)
+	document_area.size = Vector2(400, 400)
 	
-	# Regelwerk Panel
+	# Rulebook panel
 	rulebook_panel.position = Vector2(500, 50)
 	rulebook_panel.size = Vector2(300, 400)
 	
 	# Buttons
 	approve_button.text = "GENEHMIGEN"
-	approve_button.position = Vector2(100, 450)
+	approve_button.position = Vector2(100, 520)
 	approve_button.size = Vector2(120, 50)
+	approve_button.modulate = Color(0.2, 0.8, 0.2)  # Green
 	
 	reject_button.text = "ABLEHNEN"
-	reject_button.position = Vector2(280, 450)
+	reject_button.position = Vector2(280, 520)
 	reject_button.size = Vector2(120, 50)
+	reject_button.modulate = Color(0.8, 0.2, 0.2)  # Red
 	
-	# Info Labels
-	traveler_info.position = Vector2(50, 50)
-	traveler_info.size = Vector2(400, 40)
+	# Info labels
+	traveler_info.position = Vector2(50, 20)
+	traveler_info.size = Vector2(400, 70)
+	traveler_info.add_theme_font_size_override("font_size", 14)
 	
 	status_info.position = Vector2(500, 470)
-	status_info.size = Vector2(300, 30)
+	status_info.size = Vector2(300, 60)
+	status_info.add_theme_font_size_override("font_size", 12)
 	
-	# Regelwerk Text erstellen
+	# Create rulebook
 	create_rulebook()
+	
+	# Create document display area
+	create_document_display()
 
 func create_rulebook():
+	# Clear existing children
+	for child in rulebook_panel.get_children():
+		child.queue_free()
+	
 	var rules_label = Label.new()
-	# NEU: Tag-basierte Regeln
-	var rules_text = _get_current_rules_text()
-	rules_label.text = rules_text
+	rules_label.text = _get_current_rules_text()
 	rules_label.position = Vector2(10, 10)
 	rules_label.size = Vector2(280, 380)
 	rules_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rules_label.name = "RulesLabel"  # NEU: Name für späteren Zugriff
+	rules_label.name = "RulesLabel"
+	rules_label.add_theme_font_size_override("font_size", 11)
 	rulebook_panel.add_child(rules_label)
 
-# NEU: Regeltext basierend auf Tag
+func create_document_display():
+	# Clear existing documents
+	for child in document_area.get_children():
+		child.queue_free()
+	
+	# Title
+	var title = Label.new()
+	title.text = "DOKUMENTE"
+	title.position = Vector2(10, 10)
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
+	document_area.add_child(title)
+	
+	# Document content area
+	var doc_content = RichTextLabel.new()
+	doc_content.name = "DocumentContent"
+	doc_content.position = Vector2(10, 40)
+	doc_content.size = Vector2(380, 350)
+	doc_content.bbcode_enabled = true
+	document_area.add_child(doc_content)
+
 func _get_current_rules_text() -> String:
-	var text = "GRENZBESTIMMUNGEN DDR - TAG %d\n\n" % day_counter
-	text += "• Gültige Dokumente erforderlich\n"
+	var text = "[b]GRENZBESTIMMUNGEN DDR[/b]\n"
+	text += "TAG %d - SCHICHT %02d:00\n\n" % [day_counter, 8 + (daily_travelers_processed / 2)]
+	text += "[b]AKTIVE KONTROLLEN:[/b]\n"
+	text += "• Dokumentengültigkeit prüfen\n"
 	
 	if day_counter >= 3:
-		text += "• NEU: Foto-Vergleich durchführen\n"
+		text += "• Foto-Vergleich durchführen\n"
 	if day_counter >= 5:
-		text += "• NEU: PKZ kontrollieren\n"
+		text += "• PKZ kontrollieren\n"
 	if day_counter >= 7:
-		text += "• NEU: Stempel prüfen\n"
+		text += "• Stempel prüfen\n"
+	if day_counter >= 10:
+		text += "• PM-12 Vermerk beachten\n"
 	
-	text += "• Polen: Visum kontrollieren\n"
-	text += "• Geschäftsreisen: Genehmigung prüfen\n"
-	text += "• Verdächtige Personen melden\n"
-	text += "• Fluchtgefahr beachten\n"
-	text += "\nTagesquota: %d Reisende" % [10 + (day_counter * 2)]
+	text += "\n[b]BESONDERE HINWEISE:[/b]\n"
+	text += "• Polen: Visum erforderlich\n"
+	text += "• BRD: Transitvisum prüfen\n"
+	text += "• Fahndungsliste beachten\n"
+	text += "• Bei Fluchtgefahr: FESTHALTEN\n"
+	
+	text += "\n[b]TAGESQUOTA:[/b] %d/%d\n" % [daily_travelers_processed, daily_quota]
+	text += "[b]FEHLERQUOTE:[/b] %d\n" % mistakes_count
+	
+	if mistakes_count > 3:
+		text += "\n[color=red]WARNUNG: Zu viele Fehler![/color]"
 	
 	return text
 
+func start_new_day():
+	print("\n=== TAG %d BEGINNT ===" % day_counter)
+	
+	# Reset daily counters
+	daily_travelers_processed = 0
+	current_traveler_index = 0
+	mistakes_count = 0
+	
+	# Get difficulty settings
+	var settings = difficulty_settings.get(day_counter, difficulty_settings[5])
+	daily_quota = settings.quota
+	
+	# Update validation rules
+	validation_engine.update_rules_for_day(day_counter)
+	
+	# Update UI
+	update_status_display()
+	
+	# Load first traveler
+	load_next_traveler()
+
 func load_next_traveler():
-	if current_traveler_index >= travelers_database.size():
+	if daily_travelers_processed >= daily_quota:
 		end_day()
 		return
 	
-	current_traveler = travelers_database[current_traveler_index]
+	# Generate traveler based on difficulty
+	var settings = difficulty_settings.get(day_counter, difficulty_settings[5])
+	
+	if settings.use_predefined and daily_travelers_processed < 5:
+		# Use predefined travelers for first few of early days
+		current_traveler = traveler_generator.get_random_predefined_traveler()
+	else:
+		# Generate based on difficulty ratio
+		var profile = "valid" if randf() < settings.valid_ratio else "invalid"
+		if randf() < 0.1:  # 10% chance for edge case
+			profile = "edge_case"
+		current_traveler = traveler_generator.generate_traveler(profile, day_counter)
+	
+	daily_travelers_processed += 1
 	update_traveler_display()
+	update_document_display()
 
 func update_traveler_display():
-	# ERWEITERT: Mehr Details anzeigen
-	var info_text = "Reisender: %s, %s (%d Jahre)\n" % [
+	var info_text = "[b]REISENDER #%d[/b]\n" % daily_travelers_processed
+	info_text += "Name: %s, %s\n" % [
 		current_traveler.get("name", "Unbekannt"),
-		current_traveler.get("vorname", ""),
-		current_traveler.age
+		current_traveler.get("vorname", "")
 	]
-	info_text += "Nationalität: %s\n" % current_traveler.nationality
-	info_text += "Zweck: %s\n" % current_traveler.purpose
-	info_text += "Richtung: %s" % current_traveler.get("direction", "unbekannt")
+	info_text += "Alter: %d Jahre | Nationalität: %s\n" % [
+		current_traveler.get("age", 0),
+		current_traveler.get("nationality", "Unbekannt")
+	]
+	info_text += "Reisezweck: %s | Richtung: %s" % [
+		current_traveler.get("purpose", "Unbekannt"),
+		current_traveler.get("direction", "unbekannt")
+	]
 	
 	traveler_info.text = info_text
 	update_status_display()
 
+func update_document_display():
+	var doc_content = document_area.get_node("DocumentContent")
+	if not doc_content:
+		return
+	
+	var text = ""
+	
+	for doc in current_traveler.get("documents", []):
+		text += "[b]%s[/b]\n" % doc.get("type", "Unbekannt").to_upper()
+		text += "[color=#cccccc]"
+		
+		# Display relevant fields based on document type
+		match doc.get("type", ""):
+			"personalausweis":
+				text += "Name: %s, %s\n" % [doc.get("name", ""), doc.get("vorname", "")]
+				text += "Geboren: %s\n" % doc.get("geburtsdatum", "")
+				text += "PKZ: %s\n" % doc.get("pkz", "")
+				text += "Gültig bis: %s\n" % doc.get("gueltig_bis", "")
+				if doc.get("pm12_vermerk", false):
+					text += "[color=red]PM-12 VERMERK[/color]\n"
+			"reisepass":
+				text += "Name: %s, %s\n" % [doc.get("name", ""), doc.get("vorname", "")]
+				text += "Pass-Nr: %s\n" % doc.get("passnummer", "")
+				text += "Gültig bis: %s\n" % doc.get("gueltig_bis", "")
+			"ausreisegenehmigung":
+				text += "Für: %s, %s\n" % [doc.get("name", ""), doc.get("vorname", "")]
+				text += "Grund: %s\n" % doc.get("reisegrund", "")
+				text += "Gültig bis: %s\n" % doc.get("gueltig_bis", "")
+			"visum":
+				text += "Inhaber: %s\n" % doc.get("holder_name", "")
+				text += "Typ: %s\n" % doc.get("visa_type", "")
+				text += "Gültig bis: %s\n" % doc.get("valid_until", "")
+			"transitvisum":
+				text += "Inhaber: %s\n" % doc.get("holder_name", "")
+				text += "Route: %s\n" % doc.get("route_restriction", "")
+				text += "Gültig bis: %s\n" % doc.get("valid_until", "")
+		
+		text += "[/color]\n"
+	
+	# Add story/observation
+	if current_traveler.has("story"):
+		text += "\n[i]Beobachtung: %s[/i]" % current_traveler.story
+	
+	doc_content.text = text
+
 func update_status_display():
-	status_info.text = "Tag %d | Genehmigt: %d | Abgelehnt: %d" % [day_counter, approved_count, rejected_count]
+	var accuracy = 100.0
+	if game_stats.total_processed > 0:
+		accuracy = (game_stats.correct_decisions * 100.0) / game_stats.total_processed
+	
+	var text = "Tag %d | Bearbeitet: %d/%d\n" % [day_counter, daily_travelers_processed, daily_quota]
+	text += "Genehmigt: %d | Abgelehnt: %d | Fehler: %d\n" % [approved_count, rejected_count, mistakes_count]
+	text += "Genauigkeit: %.1f%%" % accuracy
+	
+	status_info.text = text
 
-# KOMPLETT NEU: Approve mit ValidationEngine
 func _on_approve_pressed():
-	print("GENEHMIGT: " + current_traveler.get("name", "Unbekannt"))
-	
-	# Hole Dokumente und validiere
-	var traveler_docs = _get_current_documents()
-	var validation_result = validation_engine.validate_traveler(current_traveler, traveler_docs)
-	
-	if validation_result.is_valid:
-		approved_count += 1
-		show_feedback("Richtige Entscheidung!", Color.GREEN)
-	else:
-		# Zeige ersten Fehler
-		var violation = validation_result.violations[0]
-		var reason = validation_engine.get_denial_reason_text(violation.code)
-		show_feedback("FEHLER! " + reason + " übersehen!", Color.RED)
-	
-	next_traveler()
+	process_decision(true)
 
-# KOMPLETT NEU: Reject mit ValidationEngine
 func _on_reject_pressed():
-	print("ABGELEHNT: " + current_traveler.get("name", "Unbekannt"))
+	process_decision(false)
+
+func process_decision(approved: bool):
+	game_stats.total_processed += 1
 	
-	# Hole Dokumente und validiere
-	var traveler_docs = _get_current_documents()
-	var validation_result = validation_engine.validate_traveler(current_traveler, traveler_docs)
+	# Validate the traveler
+	var validation_result = validation_engine.validate_traveler(
+		current_traveler, 
+		current_traveler.get("documents", [])
+	)
 	
-	if not validation_result.is_valid:
-		rejected_count += 1
-		# Bei mehreren Fehlern: Zeige alle
-		var reasons = "Ablehnungsgründe:\n"
-		for violation in validation_result.violations:
-			var reason_text = validation_engine.get_denial_reason_text(violation.code)
-			reasons += "• " + reason_text + "\n"
-		show_feedback("Korrekt! " + reasons, Color.GREEN)
+	var correct_decision = false
+	var feedback_message = ""
+	var feedback_color = Color.WHITE
+	
+	if approved:
+		approved_count += 1
+		if validation_result.is_valid:
+			# Correct approval
+			correct_decision = true
+			feedback_message = "✓ Korrekt! Dokumente gültig."
+			feedback_color = Color.GREEN
+			game_stats.correct_decisions += 1
+		else:
+			# Incorrect approval
+			mistakes_count += 1
+			var reason = validation_engine.get_denial_reason_text(
+				validation_result.violations[0].code
+			)
+			feedback_message = "✗ FEHLER! %s übersehen!" % reason
+			feedback_color = Color.RED
+			game_stats.incorrect_decisions += 1
 	else:
-		show_feedback("FEHLER! Gültige Dokumente abgelehnt!", Color.RED)
+		rejected_count += 1
+		if not validation_result.is_valid:
+			# Correct rejection
+			correct_decision = true
+			var reasons = ""
+			for violation in validation_result.violations:
+				reasons += validation_engine.get_denial_reason_text(violation.code) + ", "
+			feedback_message = "✓ Korrekt abgelehnt! Grund: %s" % reasons.trim_suffix(", ")
+			feedback_color = Color.GREEN
+			game_stats.correct_decisions += 1
+		else:
+			# Incorrect rejection
+			mistakes_count += 1
+			feedback_message = "✗ FEHLER! Gültige Dokumente abgelehnt!"
+			feedback_color = Color.RED
+			game_stats.incorrect_decisions += 1
 	
+	# Check for special cases
+	if current_traveler.get("on_watchlist", false):
+		if not approved:
+			feedback_message += "\n[Fahndungsliste erkannt!]"
+			game_stats.special_cases_handled += 1
+	
+	if current_traveler.get("diplomatic_status", false):
+		if approved:
+			feedback_message += "\n[Diplomatische Immunität respektiert]"
+			game_stats.special_cases_handled += 1
+	
+	# Show feedback
+	show_feedback(feedback_message, feedback_color)
+	
+	# Continue after delay
+	await get_tree().create_timer(2.0).timeout
 	next_traveler()
-
-# NEU: Funktion um Dokumente zu simulieren
-func _get_current_documents() -> Array:
-	var docs = []
-	
-	# Basierend auf Nationalität verschiedene Dokumente
-	if current_traveler.nationality == "DDR":
-		docs.append(DocumentFactory.from_dict({
-			"type": "personalausweis",
-			"name": current_traveler.get("name", "Mueller"),
-			"vorname": current_traveler.get("vorname", "Max"),
-			"geburtsdatum": current_traveler.get("geburtsdatum", "1955-03-15"),
-			"pkz": _generate_pkz(current_traveler.get("geburtsdatum", "1955-03-15")),
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
-			"foto": current_traveler.get("appearance", {}).get("foto", "photo_001"),
-			"pm12_vermerk": false
-		}))
-	elif current_traveler.nationality == "Polen":
-		docs.append(DocumentFactory.from_dict({
-			"type": "reisepass",
-			"name": current_traveler.get("name", "Kowalski"),
-			"vorname": current_traveler.get("vorname", "Jan"),
-			"passnummer": "PL1234567",
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01",
-			"foto": current_traveler.get("appearance", {}).get("foto", "photo_001")
-		}))
-		# Polen brauchen auch Visum
-		if current_traveler.documents_valid:
-			docs.append(DocumentFactory.from_dict({
-				"type": "visum",
-				"holder_name": current_traveler.get("name", "Kowalski"),
-				"valid_until": "1989-12-31"
-			}))
-	else:  # BRD oder andere
-		docs.append(DocumentFactory.from_dict({
-			"type": "reisepass",
-			"name": current_traveler.get("name", "Müller"),
-			"vorname": current_traveler.get("vorname", "Hans"),
-			"passnummer": "D1234567",
-			"gueltig_bis": "1990-12-31" if current_traveler.documents_valid else "1988-01-01"
-		}))
-		if current_traveler.nationality == "BRD":
-			docs.append(DocumentFactory.from_dict({
-				"type": "transitvisum",
-				"holder_name": current_traveler.get("name", "Müller"),
-				"route_restriction": "direct_only"
-			}))
-	
-	return docs
-
-# NEU: PKZ aus Geburtsdatum generieren
-func _generate_pkz(birthdate: String) -> String:
-	# Format: DDMMYYXXXXXX
-	# birthdate format: YYYY-MM-DD
-	var parts = birthdate.split("-")
-	if parts.size() == 3:
-		var day = parts[2]
-		var month = parts[1]
-		var year = parts[0].substr(2, 2)  # Nur letzte 2 Ziffern
-		return day + month + year + "123456"  # Rest ist Dummy
-	return "010170123456"  # Fallback
 
 func show_feedback(message: String, color: Color):
-	print("Feedback: " + message)
-	status_info.text = message
-	status_info.modulate = color
+	# Create feedback popup
+	var feedback = Label.new()
+	feedback.text = message
+	feedback.modulate = color
+	feedback.position = Vector2(250, 300)
+	feedback.size = Vector2(300, 100)
+	feedback.add_theme_font_size_override("font_size", 16)
+	add_child(feedback)
 	
-	# Timer für Feedback
+	# Remove after delay
 	await get_tree().create_timer(2.0).timeout
-	status_info.modulate = Color.WHITE
-	update_status_display()
+	feedback.queue_free()
 
 func next_traveler():
 	current_traveler_index += 1
 	load_next_traveler()
 
 func end_day():
-	print("Tag beendet!")
-	traveler_info.text = "TAG BEENDET\n\nGenehmigt: %d\nAbgelehnt: %d" % [approved_count, rejected_count]
+	print("\n=== TAG %d BEENDET ===" % day_counter)
+	
+	var accuracy = 100.0
+	if daily_travelers_processed > 0:
+		accuracy = ((daily_travelers_processed - mistakes_count) * 100.0) / daily_travelers_processed
+	
+	# Show day summary
+	var summary = "TAG %d ABGESCHLOSSEN\n\n" % day_counter
+	summary += "Bearbeitet: %d Reisende\n" % daily_travelers_processed
+	summary += "Genehmigt: %d\n" % approved_count
+	summary += "Abgelehnt: %d\n" % rejected_count
+	summary += "Fehler: %d\n" % mistakes_count
+	summary += "Genauigkeit: %.1f%%\n\n" % accuracy
+	
+	if mistakes_count <= 2:
+		summary += "Ausgezeichnete Arbeit, Genosse!"
+	elif mistakes_count <= 4:
+		summary += "Akzeptable Leistung."
+	else:
+		summary += "Mehr Aufmerksamkeit erforderlich!"
+	
+	traveler_info.text = summary
+	
+	# Disable buttons temporarily
 	approve_button.disabled = true
 	reject_button.disabled = true
 	
-	# NEU: Option für nächsten Tag
+	# Prepare next day
 	await get_tree().create_timer(3.0).timeout
-	_start_new_day()
-
-# NEU: Nächster Tag
-func _start_new_day():
+	
 	day_counter += 1
-	if day_counter > 5:  # Nur 5 Tage für MVP
-		traveler_info.text = "SPIEL BEENDET!\n\nGlückwunsch!"
-		return
+	if day_counter > 5:
+		show_game_over()
+	else:
+		# Reset for new day
+		approved_count = 0
+		rejected_count = 0
+		approve_button.disabled = false
+		reject_button.disabled = false
+		
+		# Update rulebook
+		var rules_label = rulebook_panel.get_node("RulesLabel")
+		if rules_label:
+			rules_label.text = _get_current_rules_text()
+		
+		start_new_day()
+
+func show_game_over():
+	var final_accuracy = 100.0
+	if game_stats.total_processed > 0:
+		final_accuracy = (game_stats.correct_decisions * 100.0) / game_stats.total_processed
 	
-	# Reset für neuen Tag
-	current_traveler_index = 0
-	approved_count = 0
-	rejected_count = 0
+	var ending_text = "=== SPIEL BEENDET ===\n\n"
+	ending_text += "Gesamtstatistik:\n"
+	ending_text += "Tage gearbeitet: 5\n"
+	ending_text += "Reisende bearbeitet: %d\n" % game_stats.total_processed
+	ending_text += "Korrekte Entscheidungen: %d\n" % game_stats.correct_decisions
+	ending_text += "Fehler: %d\n" % game_stats.incorrect_decisions
+	ending_text += "Genauigkeit: %.1f%%\n" % final_accuracy
+	ending_text += "Spezialfälle: %d\n\n" % game_stats.special_cases_handled
 	
-	# Update Regeln
-	validation_engine.update_rules_for_day(day_counter)
+	if final_accuracy >= 90:
+		ending_text += "AUSZEICHNUNG: Vorbildlicher Grenzbeamter!"
+	elif final_accuracy >= 75:
+		ending_text += "BEWERTUNG: Zufriedenstellende Leistung"
+	elif final_accuracy >= 60:
+		ending_text += "BEWERTUNG: Verbesserung erforderlich"
+	else:
+		ending_text += "BEWERTUNG: Unzureichend - Nachschulung erforderlich"
 	
-	# Update UI
-	approve_button.disabled = false
-	reject_button.disabled = false
-	
-	# Update Regelwerk
-	var rules_label = rulebook_panel.get_node("RulesLabel")
-	if rules_label:
-		rules_label.text = _get_current_rules_text()
-	
-	# Lade ersten Reisenden
-	load_next_traveler()
+	traveler_info.text = ending_text
+	print(ending_text)
