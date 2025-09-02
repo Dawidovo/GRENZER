@@ -1,6 +1,6 @@
 # Ausreisegenehmigung.gd
 extends Document
-class_name Ausreisegenehmigung
+class_name DDRAusreisegenehmigung
 
 func _init(data: Dictionary = {}):
 	type = "ausreisegenehmigung"

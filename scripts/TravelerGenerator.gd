@@ -586,7 +586,7 @@ func _generate_complete_traveler(base_data: Dictionary) -> Dictionary:
 	return traveler
 
 # Generate valid traveler
-func _generate_valid_traveler(day: int) -> Dictionary:
+func _generate_valid_traveler(__Array: -> Dictionary:
 	var nationality = _pick_nationality()
 	var gender = _pick_gender()
 	var names = _generate_names(nationality, gender)
@@ -615,7 +615,7 @@ func _generate_valid_traveler(day: int) -> Dictionary:
 	return traveler
 
 # Generate invalid traveler
-func _generate_invalid_traveler(day: int) -> Dictionary:
+func _generate_invalid_traveler(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler.documents_valid = false
 	traveler.story = _generate_story(traveler.nationality, false)
@@ -643,7 +643,7 @@ func _generate_invalid_traveler(day: int) -> Dictionary:
 	return traveler
 
 # Generate edge case traveler
-func _generate_edge_case_traveler(day: int) -> Dictionary:
+func _generate_edge_case_traveler(__Array: -> Dictionary:
 	var edge_cases = [
 		_generate_watchlist_person,
 		_generate_pm12_restricted,
@@ -944,7 +944,7 @@ func _pick_direction(nationality: String) -> String:
 	else:
 		return "einreise" if rng.randf() < 0.8 else "ausreise"
 
-func _generate_story(nationality: String, valid: bool) -> String:
+func _generate_story(_nationality: String, valid:) -> String:
 	if valid:
 		var stories = [
 			"Routinebesuch bei Verwandten.",
@@ -1008,7 +1008,7 @@ func _corrupt_pkz(traveler: Dictionary):
 
 # --- Edge Case Generators ---
 
-func _generate_watchlist_person(day: int) -> Dictionary:
+func _generate_watchlist_person(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["name"] = "Schmidt"
 	traveler["vorname"] = "Werner"
@@ -1016,14 +1016,14 @@ func _generate_watchlist_person(day: int) -> Dictionary:
 	traveler["story"] = "Person steht auf Fahndungsliste!"
 	return traveler
 
-func _generate_pm12_restricted(day: int) -> Dictionary:
+func _generate_pm12_restricted(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["nationality"] = "DDR"
 	traveler["pm12_vermerk"] = true
 	traveler["story"] = "PM-12 Vermerk - keine Grenzüberquerung erlaubt."
 	return traveler
 
-func _generate_republikflucht_risk(day: int) -> Dictionary:
+func _generate_republikflucht_risk(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["nationality"] = "DDR"
 	traveler["family_members"] = 4
@@ -1032,14 +1032,14 @@ func _generate_republikflucht_risk(day: int) -> Dictionary:
 	traveler["story"] = "Ganze Familie mit viel Gepäck - Fluchtgefahr!"
 	return traveler
 
-func _generate_diplomatic_immunity(day: int) -> Dictionary:
+func _generate_diplomatic_immunity(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["nationality"] = "UdSSR"
 	traveler["diplomatic_status"] = true
 	traveler["story"] = "Diplomat mit Immunität."
 	return traveler
 
-func _generate_child_traveler(day: int) -> Dictionary:
+func _generate_child_traveler(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["age"] = rng.randi_range(5, 12)
 	traveler["geburtsdatum"] = _generate_birthdate(traveler["age"])
@@ -1047,14 +1047,14 @@ func _generate_child_traveler(day: int) -> Dictionary:
 	traveler["story"] = "Minderjähriger reist mit Familie."
 	return traveler
 
-func _generate_expired_today(day: int) -> Dictionary:
+func _generate_expired_today(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["expires_today"] = true
 	traveler["documents_valid"] = false
 	traveler["story"] = "Dokumente laufen heute ab."
 	return traveler
 
-func _generate_multiple_nationalities(day: int) -> Dictionary:
+func _generate_multiple_nationalities(__Array: -> Dictionary:
 	var traveler = _generate_valid_traveler(day)
 	traveler["nationalities"] = ["DDR", "USA"]
 	traveler["nationality"] = "DDR/USA"
@@ -1063,7 +1063,7 @@ func _generate_multiple_nationalities(day: int) -> Dictionary:
 
 # --- Document Validation Helper ---
 
-func _generate_valid_documents(traveler: Dictionary, day: int) -> Array:
+func _generate_valid_documents(traveler: Dictionary, Array: -> Array:
 	return _generate_documents_for_traveler(traveler)
 
 # --- Statistics Functions ---

@@ -77,45 +77,38 @@ func _get_required_documents(nationality: String) -> Array:
 func _check_required_documents(result: ValidationResult, required: Array, presented: Array):
 	var presented_types = []
 	for doc in presented:
-		if doc.has_method("to_dict"):
-			presented_types.append(doc.type)
-		else:
-			presented_types.append(doc.get("type", "unknown"))
+		# Since we're dealing with Dictionaries from TravelerGenerator, not Document objects
+		presented_types.append(doc.get("type", "unknown"))
 	
 	for req_doc in required:
 		if not req_doc in presented_types:
 			result.add_violation("missing_document", req_doc)
 
 # Validate individual document
-func _validate_document(result: ValidationResult, doc: Variant, traveler_data: Dictionary):
-	var data: Dictionary = {}
-	if doc.has_method("to_dict"):
-		data = doc.to_dict()
-	else:
-		data = doc
-	var doc_type = data.get("type", "unknown")
+func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
+	var doc_type = doc.get("type", "unknown")
 	
 	# Check expiry date
 	if current_rules.check_expiry:
-		_check_expiry_date(result, data, doc_type)
+		_check_expiry_date(result, doc, doc_type)
 	
 	# Check photo match
-	if current_rules.check_photo and data.has("foto"):
-		_check_photo_match(result, data, traveler_data)
+	if current_rules.check_photo and doc.has("foto"):
+		_check_photo_match(result, doc, traveler_data)
 	
 	# Check personal data consistency
-	_check_data_consistency(result, data, traveler_data)
+	_check_data_consistency(result, doc, traveler_data)
 	
 	# Check PKZ (Personenkennzahl) for DDR documents
 	if current_rules.check_pkz and doc_type == "personalausweis":
-		_check_pkz(result, data, traveler_data)
+		_check_pkz(result, doc, traveler_data)
 	
 	# Check stamps
-	if current_rules.check_stamps and data.has("stamps"):
-		_check_stamps(result, data)
+	if current_rules.check_stamps and doc.has("stamps"):
+		_check_stamps(result, doc)
 	
 	# Check for forgeries
-	_check_forgery_indicators(result, data)
+	_check_forgery_indicators(result, doc)
 
 # Check document expiry
 func _check_expiry_date(result: ValidationResult, doc: Dictionary, doc_type: String):
@@ -180,9 +173,9 @@ func _check_pkz(result: ValidationResult, doc: Dictionary, traveler_data: Dictio
 func _check_stamps(result: ValidationResult, doc: Dictionary):
 	var stamps = doc.get("stamps", [])
 	
-	for stamp in stamps:
-		var stamp_type = stamp.get("type", "")
-		var stamp_location = stamp.get("location", "")
+	for stamp_data in stamps:
+		var stamp_type = stamp_data.get("type", "")
+		var stamp_location = stamp_data.get("location", "")
 		
 		# Check if stamp location is valid
 		if stamp_type in valid_stamp_patterns:
@@ -191,16 +184,16 @@ func _check_stamps(result: ValidationResult, doc: Dictionary):
 				result.add_violation("invalid_stamp_location", stamp_type + " at " + stamp_location)
 		
 		# Check stamp date logic
-		if stamp.has("date"):
-			if _is_date_expired(current_rules.current_date, stamp["date"]):
-				result.add_violation("future_stamp", "Stamp dated in future: " + stamp["date"])
+		if stamp_data.has("date"):
+			if _is_date_expired(current_rules.current_date, stamp_data["date"]):
+				result.add_violation("future_stamp", "Stamp dated in future: " + stamp_data["date"])
 
 # Check for forgery indicators
 func _check_forgery_indicators(result: ValidationResult, doc: Dictionary):
 	var forgery_signs = doc.get("forgery_indicators", [])
 	
-	for sign in forgery_signs:
-		match sign:
+	for forgery_indicator in forgery_signs:
+		match forgery_indicator:
 			"altered_date":
 				result.add_violation("forged_date", "Date appears altered")
 			"fake_stamp":
@@ -210,7 +203,7 @@ func _check_forgery_indicators(result: ValidationResult, doc: Dictionary):
 			"erased_text":
 				result.add_violation("forged_text", "Text has been erased/modified")
 			_:
-				result.add_violation("suspected_forgery", sign)
+				result.add_violation("suspected_forgery", forgery_indicator)
 
 # Check against watchlist
 func _check_watchlist(result: ValidationResult, traveler_data: Dictionary):
@@ -229,17 +222,15 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 	# Check PM-12 restriction (no border crossing)
 	if current_rules.check_pm12 and nationality == "DDR":
 		for doc in docs:
-			var d = doc.to_dict() if doc.has_method("to_dict") else doc
-			if d.get("type") == "personalausweis":
-				if d.get("pm12_vermerk", false):
+			if doc.get("type") == "personalausweis":
+				if doc.get("pm12_vermerk", false):
 					result.add_violation("pm12_restriction", "Border crossing prohibited")
 	
 	# Check Ausreisegenehmigung for DDR citizens leaving
 	if nationality == "DDR" and traveler_data.get("direction", "") == "ausreise":
 		var has_ausreise = false
 		for doc in docs:
-			var d2 = doc.to_dict() if doc.has_method("to_dict") else doc
-			if d2.get("type") == "ausreisegenehmigung":
+			if doc.get("type") == "ausreisegenehmigung":
 				has_ausreise = true
 				break
 		
@@ -250,10 +241,9 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 	if nationality == "BRD":
 		var has_transit = false
 		for doc in docs:
-			var d3 = doc.to_dict() if doc.has_method("to_dict") else doc
-			if d3.get("type") == "transitvisum":
+			if doc.get("type") == "transitvisum":
 				has_transit = true
-				if d3.get("route_restriction", "") == "direct_only":
+				if doc.get("route_restriction", "") == "direct_only":
 					result.add_warning("transit_restriction", "Must use direct route only")
 				break
 		
@@ -265,7 +255,7 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 		_check_republikflucht_risk(result, traveler_data, docs)
 
 # Check for potential escape attempt
-func _check_republikflucht_risk(result: ValidationResult, traveler_data: Dictionary, docs: Array):
+func _check_republikflucht_risk(result: ValidationResult, traveler_data: Dictionary, _docs: Array):
 	var risk_score = 0
 	var risk_factors = []
 	

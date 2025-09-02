@@ -1,6 +1,6 @@
 # Reisepass.gd
 extends Document
-class_name Reisepass
+class_name DDRReisepass
 
 func _init(data: Dictionary = {}):
 	type = "reisepass"

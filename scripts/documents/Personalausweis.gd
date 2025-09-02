@@ -1,6 +1,6 @@
 # Personalausweis.gd
 extends Document
-class_name Personalausweis
+class_name DDRPersonalausweis
 
 func _init(data: Dictionary = {}):
 	type = "personalausweis"

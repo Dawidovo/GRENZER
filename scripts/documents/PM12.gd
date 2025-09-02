@@ -1,6 +1,6 @@
 # PM12.gd
 extends Document
-class_name PM12
+class_name DDRPM12
 
 func _init(data: Dictionary = {}):
 	type = "pm12"
