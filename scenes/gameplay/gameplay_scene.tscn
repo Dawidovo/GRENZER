@@ -1,52 +1,116 @@
-[gd_scene load_steps=2 format=3 uid="uid://c3kflwbhdkj6u"]
+[gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" uid="uid://ctjhqs82nmk7e" path="res://scenes/gameplay/GameplayManager.gd" id="1_iy3ci"]
+[ext_resource path="res://scenes/gameplay/GameplayManager.gd" type="Script" id=1]
 
 [node name="GameplayScene" type="Control"]
-layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_iy3ci")
+script = ExtResource(1)
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="MainHBoxContainer" type="HBoxContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 
-[node name="DocumentArea" type="Control" parent="."]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="LeftPanel" type="VBoxContainer" parent="MainHBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
-[node name="RulebookPanel" type="Panel" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TravelerInfoPanel" type="Panel" parent="MainHBoxContainer/LeftPanel"]
+size_flags_vertical = 1
 
-[node name="ButtonArea" type="Control" parent="."]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TravelerInfoContent" type="VBoxContainer" parent="MainHBoxContainer/LeftPanel/TravelerInfoPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 
-[node name="ApproveButton" type="Button" parent="ButtonArea"]
-layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+[node name="TravelerInfo" type="RichTextLabel" parent="MainHBoxContainer/LeftPanel/TravelerInfoPanel/TravelerInfoContent"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 
-[node name="RejectButton" type="Button" parent="ButtonArea"]
-layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+[node name="DocumentsPanel" type="Panel" parent="MainHBoxContainer/LeftPanel"]
+size_flags_vertical = 3
 
-[node name="TravelerInfo" type="Label" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+[node name="DocumentsContent" type="VBoxContainer" parent="MainHBoxContainer/LeftPanel/DocumentsPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 
-[node name="StatusInfo" type="Label" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+[node name="DocumentScrollContainer" type="ScrollContainer" parent="MainHBoxContainer/LeftPanel/DocumentsPanel/DocumentsContent"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="DocumentArea" type="VBoxContainer" parent="MainHBoxContainer/LeftPanel/DocumentsPanel/DocumentsContent/DocumentScrollContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ButtonArea" type="HBoxContainer" parent="MainHBoxContainer/LeftPanel"]
+size_flags_vertical = 1
+
+[node name="ApproveButton" type="Button" parent="MainHBoxContainer/LeftPanel/ButtonArea"]
+text = "Approve"
+
+[node name="RejectButton" type="Button" parent="MainHBoxContainer/LeftPanel/ButtonArea"]
+text = "Reject"
+
+[node name="RightPanel" type="VBoxContainer" parent="MainHBoxContainer"]
+size_flags_horizontal = 2
+size_flags_vertical = 3
+
+[node name="RulebookPanel" type="Panel" parent="MainHBoxContainer/RightPanel"]
+size_flags_vertical = 3
+
+[node name="RulebookContent" type="VBoxContainer" parent="MainHBoxContainer/RightPanel/RulebookPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="RulesScrollContainer" type="ScrollContainer" parent="MainHBoxContainer/RightPanel/RulebookPanel/RulebookContent"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="RulesText" type="RichTextLabel" parent="MainHBoxContainer/RightPanel/RulebookPanel/RulebookContent/RulesScrollContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="StatusPanel" type="Panel" parent="MainHBoxContainer/RightPanel"]
+size_flags_vertical = 1
+
+[node name="StatusContent" type="VBoxContainer" parent="MainHBoxContainer/RightPanel/StatusPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="StatusInfo" type="RichTextLabel" parent="MainHBoxContainer/RightPanel/StatusPanel/StatusContent"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="FeedbackOverlay" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+visible = false
+
+[node name="FeedbackPanel" type="Panel" parent="FeedbackOverlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="FeedbackContent" type="VBoxContainer" parent="FeedbackOverlay/FeedbackPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="FeedbackTitle" type="Label" parent="FeedbackOverlay/FeedbackPanel/FeedbackContent"]
+
+[node name="FeedbackMessage" type="RichTextLabel" parent="FeedbackOverlay/FeedbackPanel/FeedbackContent"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
