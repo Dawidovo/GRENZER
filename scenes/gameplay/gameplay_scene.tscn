@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://c3kflwbhdkj6u"]
 
-[ext_resource type="Script" uid="uid://ctjhqs82nmk7e" path="res://scenes/gameplay/GameplayManager.gd" id="1_iy3ci"]
+[ext_resource type="Script" uid="uid://ctjhqs82nmk7e" path="res://scenes/gameplay/GameplayManager.gd" id="1"]
 
 [node name="GameplayScene" type="Control"]
 layout_mode = 3
@@ -9,44 +9,104 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_iy3ci")
+script = ExtResource("1")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="DocumentArea" type="Control" parent="."]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
 
-[node name="RulebookPanel" type="Panel" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="LeftPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="ButtonArea" type="Control" parent="."]
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TravelerInfo" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Traveler info will appear here"
+scroll_active = false
 
-[node name="ApproveButton" type="Button" parent="ButtonArea"]
-layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+[node name="DocumentArea" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel"]
+layout_mode = 2
+size_flags_vertical = 3
 
-[node name="RejectButton" type="Button" parent="ButtonArea"]
-layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+[node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 
-[node name="TravelerInfo" type="Label" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+[node name="RulesText" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Rules will appear here"
+scroll_active = false
 
-[node name="StatusInfo" type="Label" parent="."]
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
+[node name="StatusInfo" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/RightPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Status will appear here"
+scroll_active = false
+
+[node name="ButtonArea" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ApproveButton" type="Button" parent="VBoxContainer/ButtonArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "GENEHMIGEN"
+
+[node name="RejectButton" type="Button" parent="VBoxContainer/ButtonArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ABLEHNEN"
+
+[node name="DebugLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Debug info will appear here"
+
+[node name="FeedbackOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FeedbackPanel" type="Panel" parent="FeedbackOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -100.0
+offset_right = 200.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FeedbackVBox" type="VBoxContainer" parent="FeedbackOverlay/FeedbackPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FeedbackTitle" type="Label" parent="FeedbackOverlay/FeedbackPanel/FeedbackVBox"]
+layout_mode = 2
+text = "Feedback Title"
+horizontal_alignment = 1
+
+[node name="FeedbackMessage" type="RichTextLabel" parent="FeedbackOverlay/FeedbackPanel/FeedbackVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "Feedback message"
