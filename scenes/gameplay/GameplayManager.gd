@@ -1,8 +1,5 @@
 extends Control
 
-# Load the DocumentUI component
-const DocumentUI = preload("res://scenes/ui/DocumentUI.gd")
-
 # UI Elemente
 @onready var traveler_info: RichTextLabel = $MainHBoxContainer/LeftPanel/TravelerInfoPanel/TravelerInfoContent/TravelerInfo
 @onready var document_container: VBoxContainer = $MainHBoxContainer/LeftPanel/DocumentsPanel/DocumentsContent/DocumentScrollContainer/DocumentArea
@@ -28,7 +25,7 @@ var mistakes_count = 0
 var current_traveler_index = 0
 var daily_quota = 10
 var daily_travelers_processed = 0
-var selected_document: DocumentUI = null
+var selected_document: Control = null
 
 # Game Statistics
 var game_stats = {
@@ -41,7 +38,7 @@ var game_stats = {
 }
 
 # Document UI instances
-var document_ui_instances: Array[DocumentUI] = []
+var document_panels: Array[Control] = []
 
 # Difficulty progression
 var difficulty_settings = {
@@ -207,6 +204,9 @@ func load_next_traveler():
 		current_traveler = traveler_generator.generate_traveler("valid", day_counter)
 	
 	daily_travelers_processed += 1
+	print("Loaded traveler: ", current_traveler.get("name", "Unknown"))
+	print("Documents count: ", current_traveler.get("documents", []).size())
+	
 	_update_traveler_display()
 	_create_document_display()
 	_update_status_display()
@@ -251,49 +251,114 @@ func _create_document_display():
 	
 	if documents.is_empty():
 		print("Warning: No documents found for traveler")
+		# Create a placeholder message
+		var placeholder = RichTextLabel.new()
+		placeholder.text = "[center][color=red]KEINE DOKUMENTE VORHANDEN[/color][/center]"
+		placeholder.custom_minimum_size = Vector2(200, 50)
+		document_container.add_child(placeholder)
+		document_panels.append(placeholder)
 		return
+	
+	print("Creating display for %d documents" % documents.size())
 	
 	for i in range(documents.size()):
 		var doc_data = documents[i]
-		var doc_ui = DocumentUI.new()
+		var doc_panel = _create_document_panel(doc_data, i)
 		
-		document_container.add_child(doc_ui)
-		document_ui_instances.append(doc_ui)
+		document_container.add_child(doc_panel)
+		document_panels.append(doc_panel)
 		
-		# Set document data
-		doc_ui.set_document_data(doc_data)
-		
-		# Connect signals
-		doc_ui.document_clicked.connect(_on_document_clicked)
-		doc_ui.document_hovered.connect(_on_document_hovered)
-		
-		# Animate in with delay
-		doc_ui.animate_in()
-		await get_tree().create_timer(0.1 * i).timeout
+		# Small delay between documents
+		await get_tree().create_timer(0.1).timeout
+
+func _create_document_panel(doc_data: Dictionary, index: int) -> Control:
+	# Create main panel
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(250, 150)
+	
+	# Style the panel
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.9, 0.9, 0.9, 1.0)
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(0.3, 0.3, 0.3, 1.0)
+	style.corner_radius_top_left = 5
+	style.corner_radius_top_right = 5
+	style.corner_radius_bottom_left = 5
+	style.corner_radius_bottom_right = 5
+	panel.add_theme_stylebox_override("panel", style)
+	
+	# Create content
+	var content = RichTextLabel.new()
+	content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.scroll_active = false
+	
+	# Build document text
+	var doc_text = "[center][b]%s[/b][/center]\n" % doc_data.get("type", "Dokument").to_upper()
+	
+	# Add document fields
+	for key in doc_data.keys():
+		if key == "type":
+			continue
+		var display_key = _get_display_name(key)
+		doc_text += "[b]%s:[/b] %s\n" % [display_key, str(doc_data[key])]
+	
+	content.text = doc_text
+	panel.add_child(content)
+	
+	# Make it clickable
+	panel.gui_input.connect(_on_document_clicked.bind(doc_data, panel))
+	panel.mouse_entered.connect(_on_document_hovered.bind(doc_data))
+	
+	return panel
+
+func _get_display_name(key: String) -> String:
+	var display_names = {
+		"name": "Name",
+		"vorname": "Vorname", 
+		"geburtsdatum": "Geburtsdatum",
+		"pkz": "Personenkennzahl",
+		"gueltig_bis": "Gültig bis",
+		"foto": "Foto-ID",
+		"passnummer": "Pass-Nr",
+		"reisegrund": "Reisegrund",
+		"zielland": "Zielland",
+		"visa_type": "Visa-Typ",
+		"valid_until": "Gültig bis",
+		"holder_name": "Inhaber"
+	}
+	return display_names.get(key, key.capitalize())
 
 func _clear_document_display():
-	for doc_ui in document_ui_instances:
-		if is_instance_valid(doc_ui):
-			doc_ui.animate_out()
+	for panel in document_panels:
+		if is_instance_valid(panel):
+			panel.queue_free()
 	
-	document_ui_instances.clear()
+	document_panels.clear()
 	selected_document = null
 
-func _on_document_clicked(document_data: Dictionary):
-	# Deselect all documents
-	for doc_ui in document_ui_instances:
-		if is_instance_valid(doc_ui):
-			doc_ui.set_selected(false)
-	
-	# Select clicked document
-	for doc_ui in document_ui_instances:
-		if is_instance_valid(doc_ui) and doc_ui.document_data == document_data:
-			doc_ui.set_selected(true)
-			selected_document = doc_ui
-			break
+func _on_document_clicked(doc_data: Dictionary, panel: Control, event: InputEvent):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Deselect all panels
+		for p in document_panels:
+			if is_instance_valid(p):
+				var style = p.get_theme_stylebox("panel")
+				if style:
+					style.bg_color = Color(0.9, 0.9, 0.9, 1.0)
+		
+		# Select clicked panel
+		if is_instance_valid(panel):
+			var selected_style = panel.get_theme_stylebox("panel")
+			if selected_style:
+				selected_style.bg_color = Color(0.7, 0.9, 1.0, 1.0)
+			selected_document = panel
+		
+		print("Selected document: ", doc_data.get("type", "unknown"))
 
-func _on_document_hovered(document_data: Dictionary):
-	# Could add hover effects or tooltips here
+func _on_document_hovered(doc_data: Dictionary):
+	# Could add hover effects here
 	pass
 
 func _update_rules_display():
@@ -414,7 +479,6 @@ func process_decision(approved: bool):
 			feedback_text += "[b]Übersehen:[/b]\n"
 			for violation in validation_result.violations:
 				feedback_text += "• %s\n" % validation_engine.get_denial_reason_text(violation.code)
-				_highlight_error_in_documents(violation.code)
 			feedback_color = Color.RED
 			game_stats.incorrect_decisions += 1
 	else:
@@ -437,11 +501,6 @@ func process_decision(approved: bool):
 			feedback_text += "Die Dokumente waren gültig!"
 			feedback_color = Color.RED
 			game_stats.incorrect_decisions += 1
-			
-			# Shake all documents to show they were valid
-			for doc_ui in document_ui_instances:
-				if is_instance_valid(doc_ui):
-					doc_ui.shake()
 	
 	# Check for special cases
 	if current_traveler.get("on_watchlist", false):
@@ -466,42 +525,6 @@ func process_decision(approved: bool):
 	
 	# Continue to next traveler
 	next_traveler()
-
-func _highlight_error_in_documents(violation_code: String):
-	# Highlight specific document that has the error
-	var error_type = _get_error_type_from_violation(violation_code)
-	
-	for doc_ui in document_ui_instances:
-		if is_instance_valid(doc_ui):
-			if _document_has_error_type(doc_ui.document_data, error_type):
-				doc_ui.highlight_error(error_type)
-
-func _get_error_type_from_violation(code: String) -> String:
-	match code:
-		"expired_document":
-			return "ABGELAUFEN"
-		"photo_mismatch":
-			return "FOTO FALSCH"
-		"pm12_restriction":
-			return "PM-12 VERMERK"
-		"on_watchlist":
-			return "FAHNDUNGSLISTE"
-		"missing_document":
-			return "FEHLENDES DOKUMENT"
-		_:
-			return "FEHLER"
-
-func _document_has_error_type(doc_data: Dictionary, error_type: String) -> bool:
-	match error_type:
-		"ABGELAUFEN":
-			var expiry = doc_data.get("gueltig_bis", "")
-			return expiry != "" and expiry < "1989-08-01"
-		"PM-12 VERMERK":
-			return doc_data.get("pm12_vermerk", false)
-		"FOTO FALSCH":
-			return doc_data.has("foto")
-		_:
-			return true
 
 func _show_feedback(title: String, message: String, color: Color):
 	if not feedback_overlay or not feedback_message:
