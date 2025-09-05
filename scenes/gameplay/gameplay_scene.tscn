@@ -28,47 +28,51 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="TravelerInfo" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/LeftPanel"]
+custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_vertical = 3
 text = "Traveler info will appear here"
-scroll_active = false
 
-[node name="DocumentArea" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel"]
+[node name="DocumentScrollContainer" type="ScrollContainer" parent="VBoxContainer/HBoxContainer/LeftPanel"]
+custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="DocumentArea" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/LeftPanel/DocumentScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="RightPanel" type="VBoxContainer" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="RulesText" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/RightPanel"]
+custom_minimum_size = Vector2(300, 300)
 layout_mode = 2
 size_flags_vertical = 3
 text = "Rules will appear here"
-scroll_active = false
 
 [node name="StatusInfo" type="RichTextLabel" parent="VBoxContainer/HBoxContainer/RightPanel"]
+custom_minimum_size = Vector2(300, 200)
 layout_mode = 2
 size_flags_vertical = 3
 text = "Status will appear here"
-scroll_active = false
 
 [node name="ButtonArea" type="HBoxContainer" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 
 [node name="ApproveButton" type="Button" parent="VBoxContainer/ButtonArea"]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "GENEHMIGEN"
 
 [node name="RejectButton" type="Button" parent="VBoxContainer/ButtonArea"]
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "ABLEHNEN"
-
-[node name="DebugLabel" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-text = "Debug info will appear here"
 
 [node name="FeedbackOverlay" type="Control" parent="."]
 visible = false
@@ -79,27 +83,31 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="FeedbackPanel" type="Panel" parent="FeedbackOverlay"]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -200.0
-offset_top = -100.0
-offset_right = 200.0
-offset_bottom = 100.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="FeedbackVBox" type="VBoxContainer" parent="FeedbackOverlay/FeedbackPanel"]
+[node name="FeedbackBackground" type="ColorRect" parent="FeedbackOverlay"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+color = Color(0, 0, 0, 0.5)
+
+[node name="FeedbackPanel" type="PanelContainer" parent="FeedbackOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -150.0
+offset_right = 300.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FeedbackVBox" type="VBoxContainer" parent="FeedbackOverlay/FeedbackPanel"]
+layout_mode = 2
 
 [node name="FeedbackTitle" type="Label" parent="FeedbackOverlay/FeedbackPanel/FeedbackVBox"]
 layout_mode = 2
@@ -109,4 +117,5 @@ horizontal_alignment = 1
 [node name="FeedbackMessage" type="RichTextLabel" parent="FeedbackOverlay/FeedbackPanel/FeedbackVBox"]
 layout_mode = 2
 size_flags_vertical = 3
+bbcode_enabled = true
 text = "Feedback message"

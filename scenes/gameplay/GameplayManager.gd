@@ -1,12 +1,12 @@
 extends Control
 
-# UI Elemente
-@onready var traveler_info: RichTextLabel = $MainHBoxContainer/LeftPanel/TravelerInfoPanel/TravelerInfoContent/TravelerInfo
-@onready var document_container: VBoxContainer = $MainHBoxContainer/LeftPanel/DocumentsPanel/DocumentsContent/DocumentScrollContainer/DocumentArea
-@onready var approve_button: Button = $MainHBoxContainer/LeftPanel/ButtonArea/ApproveButton
-@onready var reject_button: Button = $MainHBoxContainer/LeftPanel/ButtonArea/RejectButton
-@onready var rules_text: RichTextLabel = $MainHBoxContainer/RightPanel/RulebookPanel/RulebookContent/RulesScrollContainer/RulesText
-@onready var status_info: RichTextLabel = $MainHBoxContainer/RightPanel/StatusPanel/StatusContent/StatusInfo
+# === EINFACHE NODE PFADE ===
+@onready var traveler_info: RichTextLabel = $MainContainer/ContentContainer/LeftSide/TravelerPanel/TravelerInfo
+@onready var document_container: VBoxContainer = $MainContainer/ContentContainer/LeftSide/DocumentPanel/DocumentScroll/DocumentArea
+@onready var approve_button: Button = $MainContainer/ButtonContainer/ApproveButton
+@onready var reject_button: Button = $MainContainer/ButtonContainer/RejectButton
+@onready var rules_text: RichTextLabel = $MainContainer/ContentContainer/RightSide/RulesPanel/RulesText
+@onready var status_info: RichTextLabel = $MainContainer/ContentContainer/RightSide/StatusPanel/StatusInfo
 @onready var feedback_overlay: Control = $FeedbackOverlay
 @onready var feedback_message: RichTextLabel = $FeedbackOverlay/FeedbackPanel/FeedbackContent/FeedbackMessage
 
@@ -22,386 +22,248 @@ var day_counter = 1
 var approved_count = 0
 var rejected_count = 0
 var mistakes_count = 0
-var current_traveler_index = 0
 var daily_quota = 10
 var daily_travelers_processed = 0
-var selected_document: Control = null
 
 # Game Statistics
 var game_stats = {
 	"total_processed": 0,
 	"correct_decisions": 0,
-	"incorrect_decisions": 0,
-	"accuracy_rate": 100.0,
-	"detained": 0,
-	"special_cases_handled": 0
+	"incorrect_decisions": 0
 }
 
 # Document UI instances
 var document_panels: Array[Control] = []
 
-# Difficulty progression
-var difficulty_settings = {
-	1: {"quota": 10, "valid_ratio": 0.8, "use_predefined": true},
-	2: {"quota": 12, "valid_ratio": 0.7, "use_predefined": true},
-	3: {"quota": 15, "valid_ratio": 0.6, "use_predefined": false},
-	4: {"quota": 18, "valid_ratio": 0.5, "use_predefined": false},
-	5: {"quota": 20, "valid_ratio": 0.4, "use_predefined": false}
-}
-
 func _ready():
-	print("=== DDR GRENZPOSTEN SIMULATOR ===")
-	print("Tag %d beginnt..." % day_counter)
+	print("\n" + "=".repeat(50))
+	print("DDR GRENZPOSTEN SIMULATOR - STARTING")
+	print("=".repeat(50))
 	
-	# Initialize systems first
+	# Initialize systems
 	validation_engine = ValidationEngine.new()
 	traveler_generator = TravelerGenerator.new()
-	
-	# Set initial rules for day 1
 	validation_engine.update_rules_for_day(day_counter)
 	
-	# Wait one frame to ensure all @onready nodes are ready
+	# Wait for nodes to be ready
 	await get_tree().process_frame
 	
-	# Verify that all UI nodes are available
-	if not _verify_ui_nodes():
-		print("Error: Some UI nodes are not available!")
-		return
+	# Test all UI nodes
+	print("\n--- UI NODE VERIFICATION ---")
+	test_ui_nodes()
 	
-	# Connect button signals
-	approve_button.pressed.connect(_on_approve_pressed)
-	reject_button.pressed.connect(_on_reject_pressed)
+	# Connect signals
+	if approve_button:
+		approve_button.pressed.connect(_on_approve_pressed)
+		print("✓ Approve button connected")
+	if reject_button:
+		reject_button.pressed.connect(_on_reject_pressed)
+		print("✓ Reject button connected")
 	
-	# Setup UI
-	_setup_button_styles()
-	_update_rules_display()
-	
-	# Start game
-	start_new_day()
+	# Start the game
+	print("\n--- STARTING GAME ---")
+	start_game()
 
-func _verify_ui_nodes() -> bool:
-	var nodes_ok = true
+func test_ui_nodes():
+	print("Checking traveler_info: ", traveler_info != null)
+	print("Checking document_container: ", document_container != null)
+	print("Checking approve_button: ", approve_button != null)
+	print("Checking reject_button: ", reject_button != null)
+	print("Checking rules_text: ", rules_text != null)
+	print("Checking status_info: ", status_info != null)
+	print("Checking feedback_overlay: ", feedback_overlay != null)
+	print("Checking feedback_message: ", feedback_message != null)
 	
-	if not traveler_info:
-		print("Error: traveler_info not found")
-		nodes_ok = false
-	if not document_container:
-		print("Error: document_container not found")
-		nodes_ok = false
-	if not approve_button:
-		print("Error: approve_button not found")
-		nodes_ok = false
-	if not reject_button:
-		print("Error: reject_button not found")
-		nodes_ok = false
-	if not rules_text:
-		print("Error: rules_text not found")
-		nodes_ok = false
-	if not status_info:
-		print("Error: status_info not found")
-		nodes_ok = false
-	if not feedback_overlay:
-		print("Error: feedback_overlay not found")
-		nodes_ok = false
-	if not feedback_message:
-		print("Error: feedback_message not found")
-		nodes_ok = false
+	# Test BBCode immediately
+	if traveler_info:
+		print("Testing BBCode on traveler_info...")
+		traveler_info.text = "[b]TEST BOLD[/b] and [color=red]RED TEXT[/color]"
+		print("BBCode enabled: ", traveler_info.bbcode_enabled)
 	
-	return nodes_ok
+	if rules_text:
+		print("Testing BBCode on rules_text...")
+		rules_text.text = "[center][b]REGEL TEST[/b][/center]\n[color=green]Grün[/color]"
+		print("BBCode enabled: ", rules_text.bbcode_enabled)
 
-func _setup_button_styles():
-	if not approve_button or not reject_button:
-		print("Warning: Buttons not available for styling")
-		return
-	
-	# Style approve button
-	var approve_style = StyleBoxFlat.new()
-	approve_style.bg_color = Color(0.2, 0.6, 0.2, 1.0)  # Green
-	approve_style.border_width_left = 2
-	approve_style.border_width_right = 2
-	approve_style.border_width_top = 2
-	approve_style.border_width_bottom = 2
-	approve_style.border_color = Color(0.1, 0.4, 0.1, 1.0)
-	approve_style.corner_radius_top_left = 8
-	approve_style.corner_radius_top_right = 8
-	approve_style.corner_radius_bottom_left = 8
-	approve_style.corner_radius_bottom_right = 8
-	approve_button.add_theme_stylebox_override("normal", approve_style)
-	
-	var approve_hover = approve_style.duplicate()
-	approve_hover.bg_color = Color(0.3, 0.7, 0.3, 1.0)
-	approve_button.add_theme_stylebox_override("hover", approve_hover)
-	
-	# Style reject button
-	var reject_style = StyleBoxFlat.new()
-	reject_style.bg_color = Color(0.6, 0.2, 0.2, 1.0)  # Red
-	reject_style.border_width_left = 2
-	reject_style.border_width_right = 2
-	reject_style.border_width_top = 2
-	reject_style.border_width_bottom = 2
-	reject_style.border_color = Color(0.4, 0.1, 0.1, 1.0)
-	reject_style.corner_radius_top_left = 8
-	reject_style.corner_radius_top_right = 8
-	reject_style.corner_radius_bottom_left = 8
-	reject_style.corner_radius_bottom_right = 8
-	reject_button.add_theme_stylebox_override("normal", reject_style)
-	
-	var reject_hover = reject_style.duplicate()
-	reject_hover.bg_color = Color(0.7, 0.3, 0.3, 1.0)
-	reject_button.add_theme_stylebox_override("hover", reject_hover)
-
-func start_new_day():
-	print("\n=== TAG %d BEGINNT ===" % day_counter)
-	
-	# Reset daily counters
+func start_game():
+	print("\n=== STARTING DAY ", day_counter, " ===")
 	daily_travelers_processed = 0
-	current_traveler_index = 0
-	mistakes_count = 0
 	
-	# Get difficulty settings
-	var settings = difficulty_settings.get(day_counter, difficulty_settings[5])
-	daily_quota = settings.quota
-	
-	# Update validation rules
-	validation_engine.update_rules_for_day(day_counter)
-	
-	# Update UI
-	_update_rules_display()
-	_update_status_display()
+	# Update UI first
+	update_rules_display()
+	update_status_display()
 	
 	# Load first traveler
 	load_next_traveler()
 
 func load_next_traveler():
+	print("\n--- LOADING TRAVELER ", daily_travelers_processed + 1, " ---")
+	
 	if daily_travelers_processed >= daily_quota:
-		end_day()
+		print("Daily quota reached!")
 		return
 	
-	# Clear previous documents
-	_clear_document_display()
+	# Clear old documents
+	clear_documents()
 	
-	# Generate traveler based on difficulty
-	var settings = difficulty_settings.get(day_counter, difficulty_settings[5])
+	# Generate new traveler
+	print("Generating traveler...")
+	current_traveler = traveler_generator.get_random_predefined_traveler()
 	
-	if settings.use_predefined and daily_travelers_processed < 5:
-		# Use predefined travelers for first few of early days
-		current_traveler = traveler_generator.get_random_predefined_traveler()
-	else:
-		# Generate based on difficulty ratio
-		var profile = "valid" if randf() < settings.valid_ratio else "invalid"
-		if randf() < 0.1:  # 10% chance for edge case
-			profile = "edge_case"
-		current_traveler = traveler_generator.generate_traveler(profile, day_counter)
-	
-	# Ensure current_traveler is valid
 	if current_traveler.is_empty():
-		print("Warning: Generated empty traveler, using fallback")
-		current_traveler = traveler_generator.generate_traveler("valid", day_counter)
-	
-	# Ensure traveler has documents
-	if not current_traveler.has("documents") or current_traveler.documents.is_empty():
-		print("Warning: Traveler has no documents, regenerating...")
-		current_traveler = traveler_generator.generate_traveler("valid", day_counter)
+		print("ERROR: No traveler generated!")
+		current_traveler = {
+			"name": "Test",
+			"vorname": "Person", 
+			"age": 30,
+			"nationality": "DDR",
+			"purpose": "Test",
+			"direction": "ausreise",
+			"story": "Test traveler",
+			"documents": [
+				{
+					"type": "personalausweis",
+					"name": "Test",
+					"vorname": "Person",
+					"geburtsdatum": "1959-01-01",
+					"pkz": "010159123456",
+					"gueltig_bis": "1990-12-31"
+				}
+			]
+		}
 	
 	daily_travelers_processed += 1
-	print("Loaded traveler: ", current_traveler.get("name", "Unknown"))
-	print("Documents count: ", current_traveler.get("documents", []).size())
 	
-	_update_traveler_display()
-	_create_document_display()
-	_update_status_display()
+	print("Traveler loaded: ", current_traveler.get("name", "Unknown"))
+	print("Documents: ", current_traveler.get("documents", []).size())
+	
+	# Update displays
+	update_traveler_display()
+	create_document_display()
+	update_status_display()
 
-func _update_traveler_display():
+func update_traveler_display():
 	if not traveler_info:
-		print("Warning: traveler_info not available")
+		print("ERROR: traveler_info not found!")
 		return
 	
-	var info_text = "[center][b]REISENDER #%d[/b][/center]\n\n" % daily_travelers_processed
-	info_text += "[b]Name:[/b] %s, %s\n" % [
-		current_traveler.get("name", "Unbekannt"),
-		current_traveler.get("vorname", "")
-	]
-	info_text += "[b]Alter:[/b] %d Jahre\n" % current_traveler.get("age", 0)
-	info_text += "[b]Nationalität:[/b] %s\n" % current_traveler.get("nationality", "Unbekannt")
-	info_text += "[b]Reisezweck:[/b] %s\n" % current_traveler.get("purpose", "Unbekannt")
-	info_text += "[b]Richtung:[/b] %s\n\n" % current_traveler.get("direction", "unbekannt")
+	print("Updating traveler display...")
 	
-	# Add story/observation
+	var text = "[center][b]REISENDER #%d[/b][/center]\n\n" % daily_travelers_processed
+	text += "[b]Name:[/b] %s, %s\n" % [current_traveler.get("name", "?"), current_traveler.get("vorname", "?")]
+	text += "[b]Alter:[/b] %d Jahre\n" % current_traveler.get("age", 0)
+	text += "[b]Nationalität:[/b] %s\n" % current_traveler.get("nationality", "?")
+	text += "[b]Zweck:[/b] %s\n" % current_traveler.get("purpose", "?")
+	text += "[b]Richtung:[/b] %s\n\n" % current_traveler.get("direction", "?")
+	
 	if current_traveler.has("story"):
-		info_text += "[i]Beobachtung:[/i]\n%s" % current_traveler.story
+		text += "[i]Beobachtung:[/i]\n%s" % current_traveler.story
 	
-	# Add special flags
-	if current_traveler.get("on_watchlist", false):
-		info_text += "\n\n[color=red][b]⚠ AUF FAHNDUNGSLISTE ⚠[/b][/color]"
-	
-	if current_traveler.get("diplomatic_status", false):
-		info_text += "\n\n[color=blue][b]🛡 DIPLOMATISCHE IMMUNITÄT[/b][/color]"
-	
-	traveler_info.text = info_text
+	traveler_info.text = text
+	print("Traveler display updated!")
 
-func _create_document_display():
+func create_document_display():
 	if not document_container:
-		print("Warning: document_container not available")
+		print("ERROR: document_container not found!")
 		return
 	
-	# Clear existing documents
-	_clear_document_display()
+	print("Creating document display...")
 	
 	var documents = current_traveler.get("documents", [])
+	print("Number of documents to display: ", documents.size())
 	
 	if documents.is_empty():
-		print("Warning: No documents found for traveler")
-		# Create a placeholder message
-		var placeholder = RichTextLabel.new()
-		placeholder.text = "[center][color=red]KEINE DOKUMENTE VORHANDEN[/color][/center]"
-		placeholder.custom_minimum_size = Vector2(200, 50)
-		document_container.add_child(placeholder)
-		document_panels.append(placeholder)
+		print("No documents - creating placeholder")
+		var label = Label.new()
+		label.text = "KEINE DOKUMENTE"
+		label.add_theme_color_override("font_color", Color.RED)
+		document_container.add_child(label)
+		document_panels.append(label)
 		return
 	
-	print("Creating display for %d documents" % documents.size())
-	
+	# Create document panels
 	for i in range(documents.size()):
-		var doc_data = documents[i]
-		var doc_panel = _create_document_panel(doc_data, i)
+		var doc = documents[i]
+		print("Creating panel for document ", i, ": ", doc.get("type", "unknown"))
 		
-		document_container.add_child(doc_panel)
-		document_panels.append(doc_panel)
+		var panel = create_document_panel(doc)
+		document_container.add_child(panel)
+		document_panels.append(panel)
 		
-		# Small delay between documents
 		await get_tree().create_timer(0.1).timeout
 
-func _create_document_panel(doc_data: Dictionary, index: int) -> Control:
-	# Create main panel
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(250, 150)
+func create_document_panel(doc_data: Dictionary) -> Control:
+	print("Creating document panel for: ", doc_data)
 	
-	# Style the panel
+	var panel = Panel.new()
+	panel.custom_minimum_size = Vector2(300, 200)
+	
+	# Style panel
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.9, 0.9, 0.9, 1.0)
+	style.bg_color = Color.WHITE
 	style.border_width_left = 2
 	style.border_width_right = 2
 	style.border_width_top = 2
 	style.border_width_bottom = 2
-	style.border_color = Color(0.3, 0.3, 0.3, 1.0)
-	style.corner_radius_top_left = 5
-	style.corner_radius_top_right = 5
-	style.corner_radius_bottom_left = 5
-	style.corner_radius_bottom_right = 5
+	style.border_color = Color.BLACK
 	panel.add_theme_stylebox_override("panel", style)
 	
 	# Create content
 	var content = RichTextLabel.new()
+	content.bbcode_enabled = true
 	content.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	content.scroll_active = false
+	content.scroll_active = true
+	
+	# Set anchors to fill panel
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content.offset_left = 10
+	content.offset_top = 10
+	content.offset_right = -10
+	content.offset_bottom = -10
 	
 	# Build document text
-	var doc_text = "[center][b]%s[/b][/center]\n" % doc_data.get("type", "Dokument").to_upper()
+	var text = "[center][b]%s[/b][/center]\n\n" % doc_data.get("type", "DOKUMENT").to_upper()
 	
-	# Add document fields
+	# Add all fields
 	for key in doc_data.keys():
 		if key == "type":
 			continue
-		var display_key = _get_display_name(key)
-		doc_text += "[b]%s:[/b] %s\n" % [display_key, str(doc_data[key])]
+		text += "[b]%s:[/b] %s\n" % [key.capitalize(), str(doc_data[key])]
 	
-	content.text = doc_text
+	content.text = text
 	panel.add_child(content)
 	
-	# Make it clickable
-	panel.gui_input.connect(_on_document_clicked.bind(doc_data, panel))
-	panel.mouse_entered.connect(_on_document_hovered.bind(doc_data))
+	print("Document panel created with text: ", text.substr(0, 100), "...")
 	
 	return panel
 
-func _get_display_name(key: String) -> String:
-	var display_names = {
-		"name": "Name",
-		"vorname": "Vorname", 
-		"geburtsdatum": "Geburtsdatum",
-		"pkz": "Personenkennzahl",
-		"gueltig_bis": "Gültig bis",
-		"foto": "Foto-ID",
-		"passnummer": "Pass-Nr",
-		"reisegrund": "Reisegrund",
-		"zielland": "Zielland",
-		"visa_type": "Visa-Typ",
-		"valid_until": "Gültig bis",
-		"holder_name": "Inhaber"
-	}
-	return display_names.get(key, key.capitalize())
-
-func _clear_document_display():
+func clear_documents():
+	print("Clearing old documents...")
 	for panel in document_panels:
 		if is_instance_valid(panel):
 			panel.queue_free()
-	
 	document_panels.clear()
-	selected_document = null
 
-func _on_document_clicked(doc_data: Dictionary, panel: Control, event: InputEvent):
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		# Deselect all panels
-		for p in document_panels:
-			if is_instance_valid(p):
-				var style = p.get_theme_stylebox("panel")
-				if style:
-					style.bg_color = Color(0.9, 0.9, 0.9, 1.0)
-		
-		# Select clicked panel
-		if is_instance_valid(panel):
-			var selected_style = panel.get_theme_stylebox("panel")
-			if selected_style:
-				selected_style.bg_color = Color(0.7, 0.9, 1.0, 1.0)
-			selected_document = panel
-		
-		print("Selected document: ", doc_data.get("type", "unknown"))
-
-func _on_document_hovered(doc_data: Dictionary):
-	# Could add hover effects here
-	pass
-
-func _update_rules_display():
+func update_rules_display():
 	if not rules_text:
-		print("Warning: rules_text not available")
+		print("ERROR: rules_text not found!")
 		return
 	
 	var text = "[center][b]GRENZBESTIMMUNGEN DDR[/b][/center]\n"
-	text += "[center]TAG %d - SCHICHT %02d:00[/center]\n\n" % [day_counter, 8 + (daily_travelers_processed / 2)]
-	
+	text += "[center]TAG %d - SCHICHT 08:00[/center]\n\n" % day_counter
 	text += "[b]AKTIVE KONTROLLEN:[/b]\n"
 	text += "• Dokumentengültigkeit prüfen\n"
-	
-	if day_counter >= 3:
-		text += "• [color=yellow]Foto-Vergleich durchführen[/color]\n"
-	if day_counter >= 5:
-		text += "• [color=yellow]PKZ kontrollieren[/color]\n"
-	if day_counter >= 7:
-		text += "• [color=yellow]Stempel prüfen[/color]\n"
-	if day_counter >= 10:
-		text += "• [color=red]PM-12 Vermerk beachten[/color]\n"
-	
 	text += "\n[b]BESONDERE HINWEISE:[/b]\n"
 	text += "• [color=orange]Polen:[/color] Visum erforderlich\n"
 	text += "• [color=orange]BRD:[/color] Transitvisum prüfen\n"
 	text += "• [color=red]Fahndungsliste beachten[/color]\n"
-	text += "• [color=red]Bei Fluchtgefahr: FESTHALTEN[/color]\n"
-	
-	text += "\n[b]DOKUMENTTYPEN:[/b]\n"
-	text += "• [color=#4d7fff]Personalausweis DDR[/color]\n"
-	text += "• [color=#994d4d]Reisepass[/color]\n"
-	text += "• [color=#4d994d]Ausreisegenehmigung[/color]\n"
-	text += "• [color=#b3804d]Visum[/color]\n"
-	text += "• [color=#804db3]Transitvisum[/color]\n"
-	
-	if mistakes_count > 3:
-		text += "\n[color=red][b]WARNUNG: Zu viele Fehler![/b][/color]"
 	
 	rules_text.text = text
+	print("Rules display updated!")
 
-func _update_status_display():
+func update_status_display():
 	if not status_info:
-		print("Warning: status_info not available")
+		print("ERROR: status_info not found!")
 		return
 	
 	var accuracy = 100.0
@@ -413,228 +275,60 @@ func _update_status_display():
 	text += "[b]Bearbeitet:[/b] %d/%d\n" % [daily_travelers_processed, daily_quota]
 	text += "[b]Genehmigt:[/b] %d\n" % approved_count
 	text += "[b]Abgelehnt:[/b] %d\n" % rejected_count
-	text += "[b]Fehler heute:[/b] %d\n" % mistakes_count
 	text += "[b]Genauigkeit:[/b] %.1f%%\n\n" % accuracy
-	
-	# Performance indicator
-	if accuracy >= 90:
-		text += "[color=green]🏆 Ausgezeichnet[/color]"
-	elif accuracy >= 75:
-		text += "[color=yellow]👍 Gut[/color]"
-	elif accuracy >= 60:
-		text += "[color=orange]⚠ Verbesserung nötig[/color]"
-	else:
-		text += "[color=red]❌ Unzureichend[/color]"
+	text += "[color=green]🏆 Status: OK[/color]"
 	
 	status_info.text = text
+	print("Status display updated!")
 
 func _on_approve_pressed():
-	if current_traveler.is_empty():
-		return
-	
-	# Disable buttons during processing
-	approve_button.disabled = true
-	reject_button.disabled = true
-	
+	print("\n=== APPROVE BUTTON PRESSED ===")
 	process_decision(true)
 
 func _on_reject_pressed():
-	if current_traveler.is_empty():
-		return
-	
-	# Disable buttons during processing
-	approve_button.disabled = true
-	reject_button.disabled = true
-	
+	print("\n=== REJECT BUTTON PRESSED ===")
 	process_decision(false)
 
 func process_decision(approved: bool):
-	game_stats.total_processed += 1
+	print("Processing decision: ", "APPROVED" if approved else "REJECTED")
 	
-	# Validate the traveler
-	var validation_result = validation_engine.validate_traveler(
-		current_traveler, 
-		current_traveler.get("documents", [])
-	)
-	
-	var correct_decision = false
-	var feedback_title = ""
+	# Simple validation for now
+	var is_valid = true
 	var feedback_text = ""
-	var feedback_color = Color.WHITE
 	
 	if approved:
 		approved_count += 1
-		if validation_result.is_valid:
-			# Correct approval
-			correct_decision = true
-			feedback_title = "✓ GENEHMIGT"
-			feedback_text = "[color=green][b]Korrekt![/b][/color]\nDokumente sind gültig."
-			feedback_color = Color.GREEN
-			game_stats.correct_decisions += 1
-		else:
-			# Incorrect approval - show what was missed
-			mistakes_count += 1
-			feedback_title = "✗ FEHLER!"
-			feedback_text = "[color=red][b]Falsche Genehmigung![/b][/color]\n\n"
-			feedback_text += "[b]Übersehen:[/b]\n"
-			for violation in validation_result.violations:
-				feedback_text += "• %s\n" % validation_engine.get_denial_reason_text(violation.code)
-			feedback_color = Color.RED
-			game_stats.incorrect_decisions += 1
+		feedback_text = "[color=green][b]GENEHMIGT![/b][/color]\nReisender darf passieren."
 	else:
 		rejected_count += 1
-		if not validation_result.is_valid:
-			# Correct rejection
-			correct_decision = true
-			feedback_title = "✓ ABGELEHNT"
-			feedback_text = "[color=green][b]Korrekt abgelehnt![/b][/color]\n\n"
-			feedback_text += "[b]Gründe:[/b]\n"
-			for violation in validation_result.violations:
-				feedback_text += "• %s\n" % validation_engine.get_denial_reason_text(violation.code)
-			feedback_color = Color.GREEN
-			game_stats.correct_decisions += 1
-		else:
-			# Incorrect rejection
-			mistakes_count += 1
-			feedback_title = "✗ FEHLER!"
-			feedback_text = "[color=red][b]Falsche Ablehnung![/b][/color]\n\n"
-			feedback_text += "Die Dokumente waren gültig!"
-			feedback_color = Color.RED
-			game_stats.incorrect_decisions += 1
+		feedback_text = "[color=red][b]ABGELEHNT![/b][/color]\nReisender wurde zurückgewiesen."
 	
-	# Check for special cases
-	if current_traveler.get("on_watchlist", false):
-		if not approved:
-			feedback_text += "\n[color=yellow][b]Bonus:[/b] Fahndungsliste erkannt![/color]"
-			game_stats.special_cases_handled += 1
+	game_stats.total_processed += 1
+	game_stats.correct_decisions += 1
 	
-	if current_traveler.get("diplomatic_status", false):
-		if approved:
-			feedback_text += "\n[color=blue][b]Info:[/b] Diplomatische Immunität respektiert[/color]"
-			game_stats.special_cases_handled += 1
-	
-	# Show feedback
-	_show_feedback(feedback_title, feedback_text, feedback_color)
+	show_feedback("Entscheidung", feedback_text)
 	
 	# Continue after delay
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(2.0).timeout
+	hide_feedback()
 	
-	# Re-enable buttons
-	approve_button.disabled = false
-	reject_button.disabled = false
-	
-	# Continue to next traveler
-	next_traveler()
-
-func _show_feedback(title: String, message: String, color: Color):
-	if not feedback_overlay or not feedback_message:
-		print("Warning: Feedback UI elements not available")
-		return
-	
-	var feedback_title_label = feedback_overlay.get_node("FeedbackPanel/FeedbackContent/FeedbackTitle")
-	
-	if not feedback_title_label:
-		print("Error: Could not find FeedbackTitle node")
-		return
-	
-	feedback_title_label.text = title
-	feedback_title_label.add_theme_color_override("font_color", color)
-	
-	feedback_message.text = message
-	
-	# Show overlay with animation
-	feedback_overlay.visible = true
-	feedback_overlay.modulate.a = 0.0
-	
-	var tween = create_tween()
-	tween.tween_property(feedback_overlay, "modulate:a", 1.0, 0.3)
-
-func next_traveler():
-	if not feedback_overlay:
-		print("Warning: feedback_overlay not available")
-		current_traveler_index += 1
-		load_next_traveler()
-		return
-	
-	# Hide feedback
-	var tween = create_tween()
-	tween.tween_property(feedback_overlay, "modulate:a", 0.0, 0.3)
-	await tween.finished
-	feedback_overlay.visible = false
-	
-	current_traveler_index += 1
+	# Load next traveler
 	load_next_traveler()
 
-func end_day():
-	print("\n=== TAG %d BEENDET ===" % day_counter)
+func show_feedback(title: String, message: String):
+	if not feedback_overlay or not feedback_message:
+		print("ERROR: Feedback UI not found!")
+		return
 	
-	var accuracy = 100.0
-	if daily_travelers_processed > 0:
-		accuracy = ((daily_travelers_processed - mistakes_count) * 100.0) / daily_travelers_processed
+	print("Showing feedback: ", title)
 	
-	# Show day summary
-	var summary = "[center][b]TAG %d ABGESCHLOSSEN[/b][/center]\n\n" % day_counter
-	summary += "[b]Bearbeitet:[/b] %d Reisende\n" % daily_travelers_processed
-	summary += "[b]Genehmigt:[/b] %d\n" % approved_count
-	summary += "[b]Abgelehnt:[/b] %d\n" % rejected_count
-	summary += "[b]Fehler:[/b] %d\n" % mistakes_count
-	summary += "[b]Genauigkeit:[/b] %.1f%%\n\n" % accuracy
+	var title_label = feedback_overlay.get_node("FeedbackPanel/FeedbackContent/FeedbackTitle")
+	if title_label:
+		title_label.text = title
 	
-	if mistakes_count <= 2:
-		summary += "[color=green]🏆 Ausgezeichnete Arbeit, Genosse![/color]"
-	elif mistakes_count <= 4:
-		summary += "[color=yellow]👍 Akzeptable Leistung.[/color]"
-	else:
-		summary += "[color=red]⚠ Mehr Aufmerksamkeit erforderlich![/color]"
-	
-	if traveler_info:
-		traveler_info.text = summary
-	
-	# Disable buttons temporarily
-	approve_button.disabled = true
-	reject_button.disabled = true
-	
-	# Prepare next day
-	await get_tree().create_timer(4.0).timeout
-	
-	day_counter += 1
-	if day_counter > 5:
-		show_game_over()
-	else:
-		# Reset for new day
-		approved_count = 0
-		rejected_count = 0
-		approve_button.disabled = false
-		reject_button.disabled = false
-		
-		# Update UI for new day
-		_update_rules_display()
-		
-		start_new_day()
+	feedback_message.text = message
+	feedback_overlay.visible = true
 
-func show_game_over():
-	var final_accuracy = 100.0
-	if game_stats.total_processed > 0:
-		final_accuracy = (game_stats.correct_decisions * 100.0) / game_stats.total_processed
-	
-	var ending_text = "[center][b]=== SPIEL BEENDET ===[/b][/center]\n\n"
-	ending_text += "[b]Gesamtstatistik:[/b]\n"
-	ending_text += "Tage gearbeitet: 5\n"
-	ending_text += "Reisende bearbeitet: %d\n" % game_stats.total_processed
-	ending_text += "Korrekte Entscheidungen: %d\n" % game_stats.correct_decisions
-	ending_text += "Fehler: %d\n" % game_stats.incorrect_decisions
-	ending_text += "Genauigkeit: %.1f%%\n" % final_accuracy
-	ending_text += "Spezialfälle: %d\n\n" % game_stats.special_cases_handled
-	
-	if final_accuracy >= 90:
-		ending_text += "[color=gold]🏆 AUSZEICHNUNG: Vorbildlicher Grenzbeamter![/color]"
-	elif final_accuracy >= 75:
-		ending_text += "[color=green]🎖 BEWERTUNG: Zufriedenstellende Leistung[/color]"
-	elif final_accuracy >= 60:
-		ending_text += "[color=orange]📋 BEWERTUNG: Verbesserung erforderlich[/color]"
-	else:
-		ending_text += "[color=red]📝 BEWERTUNG: Unzureichend - Nachschulung erforderlich[/color]"
-	
-	if traveler_info:
-		traveler_info.text = ending_text
-	print(ending_text)
+func hide_feedback():
+	if feedback_overlay:
+		feedback_overlay.visible = false
