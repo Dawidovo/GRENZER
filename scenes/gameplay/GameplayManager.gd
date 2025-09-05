@@ -11,12 +11,19 @@ extends Control
 @onready var feedback_message: RichTextLabel = $FeedbackOverlay/FeedbackPanel/FeedbackContent/FeedbackMessage
 @onready var feedback_title: Label = $FeedbackOverlay/FeedbackPanel/FeedbackContent/FeedbackTitle
 
+# Watchlist UI elements
+@onready var watchlist_button: Button = $MainContainer/ToolsContainer/WatchlistButton
+@onready var watchlist_overlay: Control = $WatchlistOverlay
+@onready var watchlist_text: RichTextLabel = $WatchlistOverlay/WatchlistPanel/WatchlistContent/WatchlistScroll/WatchlistText
+@onready var close_watchlist_button: Button = $WatchlistOverlay/WatchlistPanel/WatchlistContent/WatchlistHeader/CloseButton
+
 # Panel references for styling
 @onready var traveler_panel: Panel = $MainContainer/ContentContainer/LeftSide/TravelerPanel
 @onready var document_panel: Panel = $MainContainer/ContentContainer/LeftSide/DocumentPanel
 @onready var rules_panel: Panel = $MainContainer/ContentContainer/RightSide/RulesPanel
 @onready var status_panel: Panel = $MainContainer/ContentContainer/RightSide/StatusPanel
 @onready var feedback_panel: Panel = $FeedbackOverlay/FeedbackPanel
+@onready var watchlist_panel: Panel = $WatchlistOverlay/WatchlistPanel
 
 # Core Systems
 var validation_engine: ValidationEngine
@@ -43,6 +50,90 @@ var game_stats = {
 # Document UI instances
 var document_panels: Array[Control] = []
 
+# Enhanced Watchlist Database
+var extended_watchlist = [
+	{
+		"name": "Schmidt",
+		"vorname": "Werner",
+		"reason": "Republikfluchtversuch",
+		"date_added": "15.07.1989",
+		"alert_level": "HOCH",
+		"description": "Bereits 2x beim Fluchtversuch ertappt. Arbeitete als Elektriker."
+	},
+	{
+		"name": "Mueller",
+		"vorname": "Sabine",
+		"reason": "Westkontakte",
+		"date_added": "03.06.1989",
+		"alert_level": "MITTEL",
+		"description": "Schwester lebt in West-Berlin. Verdacht auf Informationsaustausch."
+	},
+	{
+		"name": "Fischer",
+		"vorname": "Klaus",
+		"reason": "Staatsfeindliche Hetze",
+		"date_added": "20.05.1989",
+		"alert_level": "HOCH", 
+		"description": "Verteilte westliche Propaganda. Ehemaliger Lehrer."
+	},
+	{
+		"name": "Weber",
+		"vorname": "Ingrid",
+		"reason": "Devisenvergehen",
+		"date_added": "10.04.1989",
+		"alert_level": "NIEDRIG",
+		"description": "Verdacht auf Handel mit D-Mark. Arbeitet im Einzelhandel."
+	},
+	{
+		"name": "Kowalski",
+		"vorname": "Jan",
+		"reason": "Spionageverdacht",
+		"date_added": "28.03.1989",
+		"alert_level": "SEHR HOCH",
+		"description": "Polnischer Staatsbürger. Verdacht auf Agententätigkeit."
+	},
+	{
+		"name": "Hartmann",
+		"vorname": "Thomas",
+		"reason": "Republikfluchtversuch",
+		"date_added": "15.02.1989",
+		"alert_level": "HOCH",
+		"description": "Familienoberhaupt. Plante Flucht mit Frau und 2 Kindern."
+	},
+	{
+		"name": "Becker",
+		"vorname": "Andrea",
+		"reason": "Dokumentenfälschung",
+		"date_added": "08.01.1989",
+		"alert_level": "MITTEL",
+		"description": "Expertin für gefälschte Ausweise. Sehr gefährlich!"
+	},
+	{
+		"name": "Wagner",
+		"vorname": "Dieter",
+		"reason": "Fluchthelfer",
+		"date_added": "22.12.1988",
+		"alert_level": "SEHR HOCH",
+		"description": "Organisierte Tunnelflucht. 15 Personen entkommen."
+	},
+	{
+		"name": "Klein",
+		"vorname": "Petra",
+		"reason": "Republikfluchtversuch",
+		"date_added": "05.11.1988",
+		"alert_level": "MITTEL",
+		"description": "Versuchte Flucht über Ungarn. Krankenschwester."
+	},
+	{
+		"name": "Richter",
+		"vorname": "Hans",
+		"reason": "Staatsfeindliche Agitation",
+		"date_added": "18.10.1988",
+		"alert_level": "HOCH",
+		"description": "Organisierte Proteste. Ehemaliger Kirchenvorstand."
+	}
+]
+
 func _ready():
 	print("\n" + "=".repeat(50))
 	print("DDR GRENZPOSTEN SIMULATOR - STARTING")
@@ -52,6 +143,9 @@ func _ready():
 	validation_engine = ValidationEngine.new()
 	traveler_generator = TravelerGenerator.new()
 	validation_engine.update_rules_for_day(day_counter)
+	
+	# Update watchlist in validation engine
+	update_validation_watchlist()
 	
 	# Wait for nodes to be ready
 	await get_tree().process_frame
@@ -71,10 +165,29 @@ func _ready():
 	if reject_button:
 		reject_button.pressed.connect(_on_reject_pressed)
 		print("✓ Reject button connected")
+	if watchlist_button:
+		watchlist_button.pressed.connect(_on_watchlist_pressed)
+		print("✓ Watchlist button connected")
+	if close_watchlist_button:
+		close_watchlist_button.pressed.connect(_on_close_watchlist_pressed)
+		print("✓ Close watchlist button connected")
+	
+	# Setup watchlist content
+	setup_watchlist_content()
 	
 	# Start the game
 	print("\n--- STARTING GAME ---")
 	start_game()
+
+func update_validation_watchlist():
+	# Convert extended watchlist to format validation engine expects
+	validation_engine.watchlist.clear()
+	for person in extended_watchlist:
+		validation_engine.watchlist.append({
+			"name": person.name,
+			"vorname": person.vorname,
+			"reason": person.reason.to_lower().replace(" ", "_")
+		})
 
 func test_ui_nodes():
 	print("Checking traveler_info: ", traveler_info != null)
@@ -86,9 +199,12 @@ func test_ui_nodes():
 	print("Checking feedback_overlay: ", feedback_overlay != null)
 	print("Checking feedback_message: ", feedback_message != null)
 	print("Checking feedback_title: ", feedback_title != null)
+	print("Checking watchlist_button: ", watchlist_button != null)
+	print("Checking watchlist_overlay: ", watchlist_overlay != null)
+	print("Checking watchlist_text: ", watchlist_text != null)
 
 func setup_panel_styling():
-	# Traveler panel - light beige
+	# Traveler panel - light beige with dark text
 	if traveler_panel:
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.95, 0.95, 0.9, 1.0)
@@ -103,7 +219,7 @@ func setup_panel_styling():
 		style.corner_radius_bottom_right = 8
 		traveler_panel.add_theme_stylebox_override("panel", style)
 	
-	# Document panel - light blue
+	# Document panel - light blue with dark text
 	if document_panel:
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.9, 0.95, 1.0, 1.0)
@@ -118,7 +234,7 @@ func setup_panel_styling():
 		style.corner_radius_bottom_right = 8
 		document_panel.add_theme_stylebox_override("panel", style)
 	
-	# Rules panel - light orange
+	# Rules panel - light orange with dark text
 	if rules_panel:
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(1.0, 0.95, 0.9, 1.0)
@@ -133,7 +249,7 @@ func setup_panel_styling():
 		style.corner_radius_bottom_right = 8
 		rules_panel.add_theme_stylebox_override("panel", style)
 	
-	# Status panel - light green
+	# Status panel - light green with dark text
 	if status_panel:
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color(0.9, 1.0, 0.9, 1.0)
@@ -148,7 +264,7 @@ func setup_panel_styling():
 		style.corner_radius_bottom_right = 8
 		status_panel.add_theme_stylebox_override("panel", style)
 	
-	# Feedback panel - white
+	# Feedback panel - white with dark text
 	if feedback_panel:
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color.WHITE
@@ -162,6 +278,21 @@ func setup_panel_styling():
 		style.corner_radius_bottom_left = 12
 		style.corner_radius_bottom_right = 12
 		feedback_panel.add_theme_stylebox_override("panel", style)
+	
+	# Watchlist panel - military style
+	if watchlist_panel:
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(0.95, 0.95, 0.85, 1.0)  # Military paper color
+		style.border_width_left = 4
+		style.border_width_right = 4
+		style.border_width_top = 4
+		style.border_width_bottom = 4
+		style.border_color = Color(0.6, 0.1, 0.1, 1.0)  # Dark red border
+		style.corner_radius_top_left = 5
+		style.corner_radius_top_right = 5
+		style.corner_radius_bottom_left = 5
+		style.corner_radius_bottom_right = 5
+		watchlist_panel.add_theme_stylebox_override("panel", style)
 
 func setup_button_styling():
 	if approve_button:
@@ -205,6 +336,91 @@ func setup_button_styling():
 		var reject_hover = reject_style.duplicate()
 		reject_hover.bg_color = Color(0.9, 0.1, 0.1, 1.0)
 		reject_button.add_theme_stylebox_override("hover", reject_hover)
+	
+	if watchlist_button:
+		# Orange watchlist button
+		var watchlist_style = StyleBoxFlat.new()
+		watchlist_style.bg_color = Color(0.9, 0.6, 0.1, 1.0)
+		watchlist_style.border_width_left = 2
+		watchlist_style.border_width_right = 2
+		watchlist_style.border_width_top = 2
+		watchlist_style.border_width_bottom = 2
+		watchlist_style.border_color = Color(0.7, 0.4, 0.0, 1.0)
+		watchlist_style.corner_radius_top_left = 5
+		watchlist_style.corner_radius_top_right = 5
+		watchlist_style.corner_radius_bottom_left = 5
+		watchlist_style.corner_radius_bottom_right = 5
+		watchlist_button.add_theme_stylebox_override("normal", watchlist_style)
+		watchlist_button.add_theme_color_override("font_color", Color.WHITE)
+		
+		# Hover effect
+		var watchlist_hover = watchlist_style.duplicate()
+		watchlist_hover.bg_color = Color(1.0, 0.7, 0.2, 1.0)
+		watchlist_button.add_theme_stylebox_override("hover", watchlist_hover)
+	
+	if close_watchlist_button:
+		# Gray close button
+		var close_style = StyleBoxFlat.new()
+		close_style.bg_color = Color(0.5, 0.5, 0.5, 1.0)
+		close_style.border_width_left = 2
+		close_style.border_width_right = 2
+		close_style.border_width_top = 2
+		close_style.border_width_bottom = 2
+		close_style.border_color = Color(0.3, 0.3, 0.3, 1.0)
+		close_style.corner_radius_top_left = 5
+		close_style.corner_radius_top_right = 5
+		close_style.corner_radius_bottom_left = 5
+		close_style.corner_radius_bottom_right = 5
+		close_watchlist_button.add_theme_stylebox_override("normal", close_style)
+		close_watchlist_button.add_theme_color_override("font_color", Color.WHITE)
+
+func setup_watchlist_content():
+	if not watchlist_text:
+		print("ERROR: watchlist_text not found!")
+		return
+	
+	# Set dark text color for readability
+	watchlist_text.add_theme_color_override("default_color", Color.BLACK)
+	
+	var content = "[center][b][font_size=18][color=red]⚠ FAHNDUNGSLISTE ⚠[/color][/font_size][/b][/center]\n"
+	content += "[center][font_size=14]MINISTERIUM FÜR STAATSSICHERHEIT[/font_size][/center]\n"
+	content += "[center][font_size=12]Ausgabe: 01.08.1989 - STRENG VERTRAULICH[/font_size][/center]\n\n"
+	content += "[b]ANWEISUNG:[/b] Personen auf dieser Liste sind SOFORT festzunehmen!\n\n"
+	
+	# Sort by alert level for display
+	var sorted_list = extended_watchlist.duplicate()
+	sorted_list.sort_custom(func(a, b): return get_alert_priority(a.alert_level) > get_alert_priority(b.alert_level))
+	
+	for person in sorted_list:
+		var alert_color = get_alert_color(person.alert_level)
+		content += "[table=3]\n"
+		content += "[cell][b]%s, %s[/b][/cell][cell][color=%s][b]%s[/b][/color][/cell][cell]%s[/cell]\n" % [
+			person.name, person.vorname, alert_color, person.alert_level, person.date_added
+		]
+		content += "[cell colspan=3][i]Grund:[/i] %s[/cell]\n" % person.reason
+		content += "[cell colspan=3][font_size=10]%s[/font_size][/cell]\n" % person.description
+		content += "[/table]\n"
+		content += "─".repeat(60) + "\n\n"
+	
+	content += "[center][font_size=10][i]Bei Sichtung einer gesuchten Person unverzüglich Meldung an den Schichtleiter![/i][/font_size][/center]"
+	
+	watchlist_text.text = content
+
+func get_alert_priority(level: String) -> int:
+	match level:
+		"SEHR HOCH": return 4
+		"HOCH": return 3
+		"MITTEL": return 2
+		"NIEDRIG": return 1
+		_: return 0
+
+func get_alert_color(level: String) -> String:
+	match level:
+		"SEHR HOCH": return "red"
+		"HOCH": return "orange"
+		"MITTEL": return "blue"
+		"NIEDRIG": return "green"
+		_: return "gray"
 
 func start_game():
 	print("\n=== STARTING DAY ", day_counter, " ===")
@@ -274,32 +490,21 @@ func update_traveler_display():
 	
 	print("Updating traveler display...")
 	
+	# Set dark text color for readability
+	traveler_info.add_theme_color_override("default_color", Color.BLACK)
+	
 	var text = "[center][b][font_size=20]REISENDER #%d[/font_size][/b][/center]\n\n" % daily_travelers_processed
 	text += "[b]Name:[/b] %s, %s\n" % [current_traveler.get("name", "?"), current_traveler.get("vorname", "?")]
 	text += "[b]Alter:[/b] %d Jahre\n" % current_traveler.get("age", 0)
-	text += "[b]Nationalitaet:[/b] [color=%s]%s[/color]\n" % [get_nationality_color(current_traveler.get("nationality", "")), current_traveler.get("nationality", "?")]
+	text += "[b]Nationalitaet:[/b] %s\n" % current_traveler.get("nationality", "?")
 	text += "[b]Zweck:[/b] %s\n" % current_traveler.get("purpose", "?")
-	text += "[b]Richtung:[/b] [color=%s]%s[/color]\n\n" % [get_direction_color(current_traveler.get("direction", "")), current_traveler.get("direction", "?").to_upper()]
+	text += "[b]Richtung:[/b] %s\n\n" % current_traveler.get("direction", "?").to_upper()
 	
 	if current_traveler.has("story"):
 		text += "[i]Beobachtung:[/i]\n%s" % current_traveler.story
 	
 	traveler_info.text = text
 	print("Traveler display updated!")
-
-func get_nationality_color(nationality: String) -> String:
-	match nationality:
-		"DDR": return "red"
-		"Polen": return "blue"
-		"BRD": return "green"
-		"UdSSR": return "purple"
-		_: return "gray"
-
-func get_direction_color(direction: String) -> String:
-	match direction:
-		"ausreise": return "red"
-		"einreise": return "green"
-		_: return "gray"
 
 func create_document_display():
 	if not document_container:
@@ -352,6 +557,7 @@ func create_no_documents_panel() -> Control:
 	
 	var label = RichTextLabel.new()
 	label.bbcode_enabled = true
+	label.add_theme_color_override("default_color", Color.BLACK)
 	label.text = "[center][color=red][b]KEINE DOKUMENTE[/b][/color][/center]"
 	label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	label.offset_left = 10
@@ -389,6 +595,7 @@ func create_document_panel(doc_data: Dictionary) -> Control:
 	var content = RichTextLabel.new()
 	content.bbcode_enabled = true
 	content.scroll_active = true
+	content.add_theme_color_override("default_color", Color.BLACK)
 	
 	# Set anchors to fill panel with margins
 	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -427,16 +634,16 @@ func get_document_content(doc_data: Dictionary) -> String:
 	var doc_type = doc_data.get("type", "DOKUMENT")
 	var text = "[center][b][font_size=16]%s[/font_size][/b][/center]\n\n" % doc_type.to_upper()
 	
-	# Add all fields with simple formatting
+	# Add all fields with neutral formatting
 	for key in doc_data.keys():
 		if key == "type":
 			continue
 			
 		var value = str(doc_data[key])
 		var formatted_key = format_field_name(key)
-		var formatted_value = format_field_value(key, value)
 		
-		text += "[b]%s:[/b] %s\n" % [formatted_key, formatted_value]
+		# NO HINTS! Show everything neutrally
+		text += "[b]%s:[/b] %s\n" % [formatted_key, value]
 	
 	return text
 
@@ -454,32 +661,6 @@ func format_field_name(key: String) -> String:
 		"visa_type": return "Visa-Typ"
 		_: return key.capitalize()
 
-func format_field_value(key: String, value: String) -> String:
-	match key:
-		"gueltig_bis", "valid_until":
-			if is_date_expired(value):
-				return "[color=red][b]%s (ABGELAUFEN)[/b][/color]" % value
-			elif is_date_expiring_soon(value):
-				return "[color=orange][b]%s (BALD ABGELAUFEN)[/b][/color]" % value
-			else:
-				return "[color=green]%s[/color]" % value
-		"pkz":
-			if value.length() != 12:
-				return "[color=red][b]%s (UNGUELTIG)[/b][/color]" % value
-			else:
-				return value
-		_:
-			return value
-
-func is_date_expired(date_str: String) -> bool:
-	var current_date = "1989-08-01"
-	return date_str < current_date
-
-func is_date_expiring_soon(date_str: String) -> bool:
-	var current_date = "1989-08-01"
-	var warning_date = "1989-09-01"
-	return date_str >= current_date and date_str <= warning_date
-
 func clear_documents():
 	print("Clearing old documents...")
 	for panel in document_panels:
@@ -491,6 +672,9 @@ func update_rules_display():
 	if not rules_text:
 		print("ERROR: rules_text not found!")
 		return
+	
+	# Set dark text color for readability
+	rules_text.add_theme_color_override("default_color", Color.BLACK)
 	
 	var text = "[center][b][font_size=18]GRENZBESTIMMUNGEN DDR[/font_size][/b][/center]\n"
 	text += "[center]TAG %d - SCHICHT 08:00 UHR[/center]\n\n" % day_counter
@@ -507,15 +691,15 @@ func update_rules_display():
 		text += "• PM-12 Ueberpruefung aktiv\n"
 	
 	text += "\n[b]LAENDER-BESTIMMUNGEN:[/b]\n"
-	text += "• [color=red]DDR:[/color] Personalausweis + Ausreisegenehmigung\n"
-	text += "• [color=blue]Polen:[/color] Reisepass + Visum erforderlich\n"
-	text += "• [color=green]BRD:[/color] Reisepass + Transitvisum\n"
-	text += "• [color=purple]UdSSR:[/color] Diplomatenstatus beachten\n"
+	text += "• DDR: Personalausweis + Ausreisegenehmigung\n"
+	text += "• Polen: Reisepass + Visum erforderlich\n"
+	text += "• BRD: Reisepass + Transitvisum\n"
+	text += "• UdSSR: Diplomatenstatus beachten\n"
 	
 	text += "\n[b]BESONDERE HINWEISE:[/b]\n"
-	text += "• [color=red]Fahndungsliste beachten[/color]\n"
-	text += "• [color=orange]Republikflucht-Verdacht melden[/color]\n"
-	text += "• [color=purple]PM-12 = Absolutes Reiseverbot[/color]\n"
+	text += "• Fahndungsliste beachten\n"
+	text += "• Republikflucht-Verdacht melden\n"
+	text += "• PM-12 = Absolutes Reiseverbot\n"
 	
 	rules_text.text = text
 	print("Rules display updated!")
@@ -525,6 +709,9 @@ func update_status_display():
 		print("ERROR: status_info not found!")
 		return
 	
+	# Set dark text color for readability
+	status_info.add_theme_color_override("default_color", Color.BLACK)
+	
 	var accuracy = 100.0
 	if game_stats.total_processed > 0:
 		accuracy = (game_stats.correct_decisions * 100.0) / game_stats.total_processed
@@ -532,27 +719,21 @@ func update_status_display():
 	var text = "[center][b][font_size=18]SCHICHT STATUS[/font_size][/b][/center]\n\n"
 	text += "[b]Tag:[/b] %d\n" % day_counter
 	text += "[b]Bearbeitet:[/b] %d/%d\n" % [daily_travelers_processed, daily_quota]
-	text += "[b]Genehmigt:[/b] [color=green]%d[/color]\n" % approved_count
-	text += "[b]Abgelehnt:[/b] [color=red]%d[/color]\n" % rejected_count
-	text += "[b]Genauigkeit:[/b] [color=%s]%.1f%%[/color]\n\n" % [get_accuracy_color(accuracy), accuracy]
+	text += "[b]Genehmigt:[/b] %d\n" % approved_count
+	text += "[b]Abgelehnt:[/b] %d\n" % rejected_count
+	text += "[b]Genauigkeit:[/b] %.1f%%\n\n" % accuracy
 	
 	if accuracy >= 90:
-		text += "[color=green][b]Status: AUSGEZEICHNET[/b][/color]"
+		text += "[b]Status: AUSGEZEICHNET[/b]"
 	elif accuracy >= 75:
-		text += "[color=blue][b]Status: GUT[/b][/color]"
+		text += "[b]Status: GUT[/b]"
 	elif accuracy >= 60:
-		text += "[color=orange][b]Status: AKZEPTABEL[/b][/color]"
+		text += "[b]Status: AKZEPTABEL[/b]"
 	else:
-		text += "[color=red][b]Status: VERBESSERUNG NOETIG[/b][/color]"
+		text += "[b]Status: VERBESSERUNG NOETIG[/b]"
 	
 	status_info.text = text
 	print("Status display updated!")
-
-func get_accuracy_color(accuracy: float) -> String:
-	if accuracy >= 90: return "green"
-	elif accuracy >= 75: return "blue"
-	elif accuracy >= 60: return "orange"
-	else: return "red"
 
 func _on_approve_pressed():
 	print("\n=== APPROVE BUTTON PRESSED ===")
@@ -561,6 +742,37 @@ func _on_approve_pressed():
 func _on_reject_pressed():
 	print("\n=== REJECT BUTTON PRESSED ===")
 	process_decision(false)
+
+func _on_watchlist_pressed():
+	print("=== WATCHLIST BUTTON PRESSED ===")
+	show_watchlist()
+
+func _on_close_watchlist_pressed():
+	print("=== CLOSE WATCHLIST BUTTON PRESSED ===")
+	hide_watchlist()
+
+func show_watchlist():
+	if not watchlist_overlay:
+		print("ERROR: watchlist_overlay not found!")
+		return
+	
+	print("Showing watchlist...")
+	watchlist_overlay.visible = true
+	
+	# Simple fade in
+	watchlist_overlay.modulate.a = 0.0
+	var tween = create_tween()
+	tween.tween_property(watchlist_overlay, "modulate:a", 1.0, 0.3)
+
+func hide_watchlist():
+	if not watchlist_overlay:
+		return
+	
+	print("Hiding watchlist...")
+	var tween = create_tween()
+	tween.tween_property(watchlist_overlay, "modulate:a", 0.0, 0.2)
+	await tween.finished
+	watchlist_overlay.visible = false
 
 func process_decision(approved: bool):
 	print("Processing decision: ", "APPROVED" if approved else "REJECTED")
@@ -621,6 +833,10 @@ func show_feedback(title: String, message: String):
 	
 	print("Showing feedback: ", title)
 	
+	# Set dark text color for feedback
+	feedback_title.add_theme_color_override("font_color", Color.BLACK)
+	feedback_message.add_theme_color_override("default_color", Color.BLACK)
+	
 	feedback_title.text = title
 	feedback_message.text = message
 	feedback_overlay.visible = true
@@ -668,6 +884,7 @@ func end_day():
 	
 	day_counter += 1
 	validation_engine.update_rules_for_day(day_counter)
+	update_validation_watchlist()  # Update watchlist for new day
 	approved_count = 0
 	rejected_count = 0
 	start_game()

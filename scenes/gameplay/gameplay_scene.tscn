@@ -118,6 +118,19 @@ grow_vertical = 2
 bbcode_enabled = true
 text = "Status will appear here"
 
+[node name="ToolsContainer" type="HBoxContainer" parent="MainContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+
+[node name="WatchlistButton" type="Button" parent="MainContainer/ToolsContainer"]
+custom_minimum_size = Vector2(200, 40)
+layout_mode = 2
+text = "FAHNDUNGSLISTE"
+
+[node name="Spacer" type="Control" parent="MainContainer/ToolsContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
 [node name="ButtonContainer" type="HBoxContainer" parent="MainContainer"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
@@ -188,3 +201,72 @@ layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 text = "Feedback message"
+
+[node name="WatchlistOverlay" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WatchlistBackground" type="ColorRect" parent="WatchlistOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.8)
+
+[node name="WatchlistPanel" type="Panel" parent="WatchlistOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -500.0
+offset_top = -350.0
+offset_right = 500.0
+offset_bottom = 350.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WatchlistContent" type="VBoxContainer" parent="WatchlistOverlay/WatchlistPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WatchlistHeader" type="HBoxContainer" parent="WatchlistOverlay/WatchlistPanel/WatchlistContent"]
+layout_mode = 2
+
+[node name="WatchlistTitle" type="Label" parent="WatchlistOverlay/WatchlistPanel/WatchlistContent/WatchlistHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "FAHNDUNGSLISTE - STRENG VERTRAULICH"
+horizontal_alignment = 1
+
+[node name="CloseButton" type="Button" parent="WatchlistOverlay/WatchlistPanel/WatchlistContent/WatchlistHeader"]
+custom_minimum_size = Vector2(100, 40)
+layout_mode = 2
+text = "SCHLIESSEN"
+
+[node name="WatchlistScroll" type="ScrollContainer" parent="WatchlistOverlay/WatchlistPanel/WatchlistContent"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="WatchlistText" type="RichTextLabel" parent="WatchlistOverlay/WatchlistPanel/WatchlistContent/WatchlistScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "Watchlist content will appear here"
