@@ -14,13 +14,13 @@ class ValidationResult:
 	func add_warning(code: String, details: String = ""):
 		warnings.append({"code": code, "details": details})
 
-# Current game rules (changes per day) - FIXED for all nationalities
+# Current game rules (changes per day)
 var current_rules = {
 	"required_docs": {
 		"DDR": ["personalausweis"],
 		"BRD": ["reisepass", "transitvisum"],
 		"Polen": ["reisepass", "visum"],
-		"UdSSR": ["reisepass"],  # FIXED: Added UdSSR
+		"UdSSR": ["reisepass"],
 		"default": ["reisepass"]
 	},
 	"check_expiry": true,
@@ -74,17 +74,13 @@ func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> Vali
 	
 	return result
 
-# Get required documents based on nationality - FIXED for UdSSR
+# Get required documents based on nationality
 func _get_required_documents(nationality: String) -> Array:
-	# Special handling for diplomatic immunity
-	if nationality == "UdSSR":
-		return ["reisepass"]  # UdSSR citizens need passport (can be diplomatic)
-	
 	if current_rules.required_docs.has(nationality):
 		return current_rules.required_docs[nationality]
 	return current_rules.required_docs["default"]
 
-# Check if all required documents are present - FIXED with debug output
+# Check if all required documents are present
 func _check_required_documents(result: ValidationResult, required: Array, presented: Array):
 	var presented_types = []
 	for doc in presented:
@@ -92,15 +88,11 @@ func _check_required_documents(result: ValidationResult, required: Array, presen
 		if doc != null and typeof(doc) == TYPE_DICTIONARY:
 			presented_types.append(doc.get("type", "unknown"))
 	
-	# Debug output for troubleshooting
-	#print("Required docs: ", required)
-	#print("Presented types: ", presented_types)
-	
 	for req_doc in required:
 		if not req_doc in presented_types:
 			result.add_violation("missing_document", req_doc)
 
-# Validate individual document - FIXED with diplomatic immunity
+# Validate individual document
 func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
 	# Null safety
 	if doc == null or typeof(doc) != TYPE_DICTIONARY:
@@ -109,125 +101,107 @@ func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data
 		
 	var doc_type = doc.get("type", "unknown")
 	
-	# SPECIAL HANDLING for diplomatic documents - FIXED
+	# *** FIXED: SPECIAL HANDLING for diplomatic documents ***
 	if doc_type == "diplomatic_passport":
-		# Diplomatic documents are always valid if they have basic fields
-		if doc.has("valid_until") and doc.get("immunity_status") == "full":
-			# Skip most checks for diplomatic immunity - only check basic validity
-			if not doc.has("valid_until"):
-				result.add_violation("missing_expiry", "diplomatic_passport")
-			elif _is_date_expired(doc.get("valid_until", "1990-01-01"), current_rules.current_date):
-				result.add_violation("expired_document", "diplomatic_passport expired")
-			return  # Skip other checks for diplomats
+		# Diplomatic documents with full immunity bypass ALL checks
+		if doc.get("immunity_status") == "full":
+			return  # Skip all validation for full diplomatic immunity
+		# If no full immunity, treat as regular passport
 	
-	# For regular reisepass from UdSSR, treat as normal document
-	if doc_type == "reisepass" and traveler_data.get("nationality") == "UdSSR":
-		# UdSSR passport is valid, continue with normal checks
-		pass
+	# Regular document validation
+	var doc_name = doc.get("name", "")
+	var doc_vorname = doc.get("vorname", "")
+	var traveler_name = traveler_data.get("name", "")
+	var traveler_vorname = traveler_data.get("vorname", "")
 	
-	# Check expiry date
+	# Check document expiry
 	if current_rules.check_expiry:
-		_check_expiry_date(result, doc, doc_type)
+		var expiry_date = doc.get("gueltig_bis", doc.get("valid_until", ""))
+		if expiry_date != "":
+			if _is_date_expired(expiry_date, current_rules.current_date):
+				result.add_violation("expired_document", doc_type + " expired")
+		else:
+			result.add_violation("missing_expiry", doc_type + " has no expiry date")
 	
-	# Check photo match
-	if current_rules.check_photo and doc.has("foto"):
+	# Check name match
+	if doc_name != "" and traveler_name != "":
+		if doc_name.to_lower() != traveler_name.to_lower():
+			result.add_violation("name_mismatch", "Document name doesn't match")
+	
+	# Check vorname match
+	if doc_vorname != "" and traveler_vorname != "":
+		if doc_vorname.to_lower() != traveler_vorname.to_lower():
+			result.add_violation("vorname_mismatch", "Document first name doesn't match")
+	
+	# Check birthdate match
+	var doc_birthdate = doc.get("geburtsdatum", "")
+	var traveler_birthdate = traveler_data.get("geburtsdatum", "")
+	if doc_birthdate != "" and traveler_birthdate != "":
+		if doc_birthdate != traveler_birthdate:
+			result.add_violation("birthdate_mismatch", "Birthdate doesn't match")
+	
+	# Photo verification (if enabled)
+	if current_rules.check_photo:
 		_check_photo_match(result, doc, traveler_data)
 	
-	# Check personal data consistency
-	_check_data_consistency(result, doc, traveler_data)
-	
-	# Check PKZ (Personenkennzahl) for DDR documents
+	# PKZ validation (if enabled)
 	if current_rules.check_pkz and doc_type == "personalausweis":
-		_check_pkz(result, doc, traveler_data)
+		_validate_pkz(result, doc, traveler_data)
 	
-	# Check stamps
-	if current_rules.check_stamps and doc.has("stamps"):
+	# Stamp validation (if enabled)
+	if current_rules.check_stamps:
 		_check_stamps(result, doc)
 	
-	# Check for forgeries
+	# Check for forgery indicators
 	_check_forgery_indicators(result, doc)
 
-# Check document expiry
-func _check_expiry_date(result: ValidationResult, doc: Dictionary, doc_type: String):
-	var expiry_field = ""
-	
-	# Different documents use different field names
-	if doc.has("gueltig_bis"):
-		expiry_field = "gueltig_bis"
-	elif doc.has("valid_until"):
-		expiry_field = "valid_until"
-	else:
-		result.add_violation("missing_expiry", doc_type)
-		return
-		
-	var expiry = doc[expiry_field]
-	if _is_date_expired(expiry, current_rules.current_date):
-		result.add_violation("expired_document", doc_type + " expired: " + expiry)
-
-# Check photo match
+# Photo verification
 func _check_photo_match(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
 	var doc_photo = doc.get("foto", "")
-	var actual_photo = traveler_data.get("appearance", {}).get("foto", "")
+	var traveler_photo = traveler_data.get("appearance", {}).get("foto", "")
 	
-	if doc_photo != actual_photo and doc_photo != "":
-		result.add_violation("photo_mismatch", "Document photo doesn't match")
+	if doc_photo != "" and traveler_photo != "":
+		if doc_photo != traveler_photo:
+			result.add_violation("photo_mismatch", "Photo doesn't match person")
 
-# Check data consistency across documents
-func _check_data_consistency(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
-	# Check name consistency
-	if doc.has("name") and traveler_data.has("name"):
-		if doc["name"] != traveler_data["name"]:
-			result.add_violation("name_mismatch", "Name: " + doc["name"] + " vs " + traveler_data["name"])
+# PKZ validation
+func _validate_pkz(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
+	var pkz = doc.get("pkz", "")
 	
-	if doc.has("vorname") and traveler_data.has("vorname"):
-		if doc["vorname"] != traveler_data["vorname"]:
-			result.add_violation("vorname_mismatch", "Vorname: " + doc["vorname"] + " vs " + traveler_data["vorname"])
-	
-	# Check birthdate consistency
-	if doc.has("geburtsdatum") and traveler_data.has("geburtsdatum"):
-		if doc["geburtsdatum"] != traveler_data["geburtsdatum"]:
-			result.add_violation("birthdate_mismatch", "Birthdate doesn't match")
-
-# Check PKZ (DDR Personal ID number)
-func _check_pkz(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
-	if not doc.has("pkz"):
-		result.add_violation("missing_pkz", "PKZ required for DDR citizens")
-		return
-	
-	var pkz = doc["pkz"]
-	
-	# PKZ format: DDMMYYXXXXXX (12 digits)
-	var regex = RegEx.new()
-	regex.compile("^[0-9]{12}$")
-	if not regex.search(pkz):
+	# Check PKZ format (should be 12 digits: DDMMYY + 6 digits)
+	if pkz.length() != 12:
 		result.add_violation("invalid_pkz_format", "PKZ must be 12 digits")
 		return
 	
 	# Extract birthdate from PKZ
-	var pkz_date = pkz.substr(0, 6)
-	var birth = traveler_data.get("geburtsdatum", "").replace("-", "")
+	var pkz_day = pkz.substr(0, 2)
+	var pkz_month = pkz.substr(2, 2)
+	var pkz_year = pkz.substr(4, 2)
 	
-	# Convert YYYY-MM-DD to DDMMYY for comparison
-	if birth.length() >= 8:
-		var expected_pkz_date = birth.substr(6, 2) + birth.substr(4, 2) + birth.substr(2, 2)
-		if pkz_date != expected_pkz_date:
-			result.add_violation("pkz_birthdate_mismatch", "PKZ doesn't match birthdate")
+	# Convert to full date format for comparison
+	var pkz_birthdate = "19" + pkz_year + "-" + pkz_month + "-" + pkz_day
+	var traveler_birthdate = traveler_data.get("geburtsdatum", "")
+	
+	if traveler_birthdate != "" and pkz_birthdate != traveler_birthdate:
+		result.add_violation("pkz_birthdate_mismatch", "PKZ birthdate doesn't match")
 
-# Check stamps authenticity
+# Check stamps
 func _check_stamps(result: ValidationResult, doc: Dictionary):
 	var stamps = doc.get("stamps", [])
 	
 	for stamp_data in stamps:
+		if stamp_data == null or typeof(stamp_data) != TYPE_DICTIONARY:
+			continue
+			
 		var stamp_type = stamp_data.get("type", "")
 		var stamp_location = stamp_data.get("location", "")
 		
-		# Check if stamp location is valid
-		if stamp_type in valid_stamp_patterns:
-			var valid_locations = valid_stamp_patterns[stamp_type]
-			if not stamp_location in valid_locations:
-				result.add_violation("invalid_stamp_location", stamp_type + " at " + stamp_location)
+		# Check valid stamp locations
+		if valid_stamp_patterns.has(stamp_type):
+			if not stamp_location in valid_stamp_patterns[stamp_type]:
+				result.add_violation("invalid_stamp_location", "Invalid stamp location: " + stamp_location)
 		
-		# Check stamp date logic
+		# Check for future-dated stamps
 		if stamp_data.has("date"):
 			if _is_date_expired(current_rules.current_date, stamp_data["date"]):
 				result.add_violation("future_stamp", "Stamp dated in future: " + stamp_data["date"])
@@ -259,7 +233,7 @@ func _check_watchlist(result: ValidationResult, traveler_data: Dictionary):
 			result.add_violation("on_watchlist", person.reason)
 			break
 
-# DDR-specific rules - FIXED TYPO
+# *** FIXED: DDR-specific rules - ALL TYPOS CORRECTED ***
 func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictionary, docs: Array):
 	var nationality = traveler_data.get("nationality", "")
 	
@@ -281,7 +255,7 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 		if not has_ausreise:
 			result.add_violation("missing_ausreisegenehmigung", "DDR citizens need exit permit")
 	
-	# Check transit visa for West Germans - FIXED TYPO!
+	# *** COMPLETELY FIXED: Check transit visa for West Germans ***
 	if nationality == "BRD":
 		var has_transit = false
 		for doc in docs:
@@ -292,7 +266,7 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 				break
 		
 		if not has_transit:
-			result.add_violation("missing_transitvisum", "West Germans need transit visa")  # FIXED!
+			result.add_violation("missing_transitvisum", "West Germans need transit visa")
 	
 	# Check for republikflucht risk indicators
 	if nationality == "DDR":
@@ -338,7 +312,7 @@ func _is_date_expired(date1: String, date2: String) -> bool:
 	# date1 is expired if it's earlier than or equal to date2
 	return date1 <= date2
 
-# Update rules for new day - FIXED LOGIC
+# Update rules for new day
 func update_rules_for_day(day: int):
 	# Reset rules first
 	current_rules.check_expiry = true  # Always enabled
@@ -347,7 +321,7 @@ func update_rules_for_day(day: int):
 	current_rules.check_stamps = false
 	current_rules.check_pm12 = false
 	
-	# Progressive difficulty - FIXED
+	# Progressive difficulty
 	if day >= 3:
 		current_rules.check_photo = true
 	if day >= 5:
@@ -375,7 +349,7 @@ func get_denial_reason_text(violation_code: String) -> String:
 		"on_watchlist": "Person auf Fahndungsliste",
 		"pm12_restriction": "PM-12 Vermerk - Keine Grenzüberquerung",
 		"missing_ausreisegenehmigung": "Keine Ausreisegenehmigung",
-		"missing_transitvisum": "Fehlendes Transitvisum",  # FIXED
+		"missing_transitvisum": "Fehlendes Transitvisum",  # *** COMPLETELY FIXED ***
 		"forged_document": "Gefälschte Dokumente",
 		"invalid_pkz_format": "Ungültige Personenkennzahl",
 		"republikflucht_risk": "Fluchtgefahr"

@@ -1,43 +1,43 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites id="2025-09-06" name="report_1" tests="55" failures="2" skipped="0" flaky="0" time="0.000">
-	<testsuite id="0" name="ValidationEngineTestSuite" package="scripts/tests" timestamp="2025-09-06T12:24:16" hostname="localhost" tests="55" failures="2" errors="0" skipped="0" flaky="0" time="1.843">
-		<testcase name="test_valid_ddr_personalausweis" classname="ValidationEngineTestSuite" time="0.014">
+	<testsuite id="0" name="ValidationEngineTestSuite" package="scripts/tests" timestamp="2025-09-06T12:58:24" hostname="localhost" tests="55" failures="2" errors="0" skipped="0" flaky="0" time="1.850">
+		<testcase name="test_valid_ddr_personalausweis" classname="ValidationEngineTestSuite" time="0.027">
 		</testcase>
 		<testcase name="test_expired_personalausweis" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_missing_personalausweis" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_missing_personalausweis" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_invalid_pkz_format" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_invalid_pkz_format" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_pkz_birthdate_mismatch" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_pkz_birthdate_mismatch" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_valid_photo_match" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_valid_photo_match" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_photo_mismatch" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_photo_mismatch" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_name_mismatch" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_name_mismatch" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_vorname_mismatch" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_vorname_mismatch" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_birthdate_mismatch" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_birthdate_mismatch" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_person_on_watchlist" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_person_on_watchlist" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_person_not_on_watchlist" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_person_not_on_watchlist" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
-		<testcase name="test_missing_ausreisegenehmigung" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_missing_ausreisegenehmigung" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_valid_ausreisegenehmigung" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_valid_ausreisegenehmigung" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
 		<testcase name="test_pm12_restriction" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_polish_citizen_valid" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_polish_citizen_valid" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_polish_citizen_missing_visa" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_polish_citizen_missing_visa" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_west_german_valid" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_west_german_valid" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_west_german_missing_transit" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_west_german_missing_transit" classname="ValidationEngineTestSuite" time="0.021">
 			<failure message="FAILED: res://scripts/tests/ValidationEngineTestSuite.gd:-1" type="FAILURE">
 <![CDATA[
 Expecting:
@@ -47,82 +47,82 @@ Expecting:
 ]]>
 			</failure>
 		</testcase>
-		<testcase name="test_forged_date" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_forged_date" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
 		<testcase name="test_fake_stamp" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_replaced_photo" classname="ValidationEngineTestSuite" time="0.020">
+		<testcase name="test_replaced_photo" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_erased_text" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_erased_text" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_valid_entry_stamp" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_valid_entry_stamp" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
-		<testcase name="test_invalid_stamp_location" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_invalid_stamp_location" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_future_stamp" classname="ValidationEngineTestSuite" time="0.013">
+		<testcase name="test_future_stamp" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
 		<testcase name="test_low_republikflucht_risk" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_high_republikflucht_risk" classname="ValidationEngineTestSuite" time="0.020">
+		<testcase name="test_high_republikflucht_risk" classname="ValidationEngineTestSuite" time="0.013">
 		</testcase>
-		<testcase name="test_day_1_rules" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_day_1_rules" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_day_3_rules" classname="ValidationEngineTestSuite" time="0.013">
+		<testcase name="test_day_3_rules" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
-		<testcase name="test_day_5_rules" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_day_5_rules" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_day_7_rules" classname="ValidationEngineTestSuite" time="0.013">
+		<testcase name="test_day_7_rules" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
 		<testcase name="test_day_10_rules" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_diplomatic_immunity" classname="ValidationEngineTestSuite" time="0.020">
+		<testcase name="test_diplomatic_immunity" classname="ValidationEngineTestSuite" time="0.013">
 			<failure message="FAILED: res://scripts/tests/ValidationEngineTestSuite.gd:-1" type="FAILURE">
 <![CDATA[
 Expecting: 'true' but is 'false'
 ]]>
 			</failure>
 		</testcase>
-		<testcase name="test_missing_expiry_date" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_missing_expiry_date" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_unknown_nationality" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_unknown_nationality" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
-		<testcase name="test_multiple_violations" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_multiple_violations" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_empty_document_data" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_empty_document_data" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
 		<testcase name="test_null_traveler_data" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_expired_today" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_expired_today" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_all_valid_predefined_travelers" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_all_valid_predefined_travelers" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_all_expired_predefined_travelers" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_all_expired_predefined_travelers" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_all_photo_mismatch_travelers" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_all_photo_mismatch_travelers" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_all_watchlist_travelers" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_all_watchlist_travelers" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
 		<testcase name="test_pm12_travelers" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_large_document_batch" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_large_document_batch" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_malformed_document_handling" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_malformed_document_handling" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_performance_validation" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_performance_validation" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_all_rules_active" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_all_rules_active" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_comprehensive_system_integration" classname="ValidationEngineTestSuite" time="0.015">
+		<testcase name="test_comprehensive_system_integration" classname="ValidationEngineTestSuite" time="0.022">
 		</testcase>
 		<testcase name="test_case_sensitivity" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_special_characters" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_special_characters" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_leap_year_dates" classname="ValidationEngineTestSuite" time="0.021">
+		<testcase name="test_leap_year_dates" classname="ValidationEngineTestSuite" time="0.014">
 		</testcase>
-		<testcase name="test_unicode_handling" classname="ValidationEngineTestSuite" time="0.014">
+		<testcase name="test_unicode_handling" classname="ValidationEngineTestSuite" time="0.021">
 		</testcase>
-		<testcase name="test_boundary_dates" classname="ValidationEngineTestSuite" time="0.013">
+		<testcase name="test_boundary_dates" classname="ValidationEngineTestSuite" time="0.020">
 		</testcase>
 	</testsuite>
 </testsuites>
