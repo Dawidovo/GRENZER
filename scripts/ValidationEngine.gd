@@ -14,12 +14,13 @@ class ValidationResult:
 	func add_warning(code: String, details: String = ""):
 		warnings.append({"code": code, "details": details})
 
-# Current game rules (changes per day)
+# Current game rules (changes per day) - FIXED for all nationalities
 var current_rules = {
 	"required_docs": {
 		"DDR": ["personalausweis"],
 		"BRD": ["reisepass", "transitvisum"],
 		"Polen": ["reisepass", "visum"],
+		"UdSSR": ["reisepass"],  # FIXED: Added UdSSR
 		"default": ["reisepass"]
 	},
 	"check_expiry": true,
@@ -47,6 +48,11 @@ var valid_stamp_patterns = {
 func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> ValidationResult:
 	var result = ValidationResult.new()
 	
+	# Null safety check
+	if traveler_data == null or presented_docs == null:
+		result.add_violation("null_data", "Traveler data or documents are null")
+		return result
+	
 	# Step 1: Determine required documents based on nationality
 	var required_docs = _get_required_documents(traveler_data.get("nationality", "unknown"))
 	
@@ -56,7 +62,8 @@ func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> Vali
 	# Step 3: Run parallel validation checks if documents present
 	if result.violations.size() == 0:  # Only continue if docs are present
 		for doc in presented_docs:
-			_validate_document(result, doc, traveler_data)
+			if doc != null:  # Null safety
+				_validate_document(result, doc, traveler_data)
 	
 	# Step 4: Check against watchlist
 	if current_rules.check_watchlist:
@@ -67,26 +74,56 @@ func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> Vali
 	
 	return result
 
-# Get required documents based on nationality
+# Get required documents based on nationality - FIXED for UdSSR
 func _get_required_documents(nationality: String) -> Array:
+	# Special handling for diplomatic immunity
+	if nationality == "UdSSR":
+		return ["reisepass"]  # UdSSR citizens need passport (can be diplomatic)
+	
 	if current_rules.required_docs.has(nationality):
 		return current_rules.required_docs[nationality]
 	return current_rules.required_docs["default"]
 
-# Check if all required documents are present
+# Check if all required documents are present - FIXED with debug output
 func _check_required_documents(result: ValidationResult, required: Array, presented: Array):
 	var presented_types = []
 	for doc in presented:
-		# Since we're dealing with Dictionaries from TravelerGenerator, not Document objects
-		presented_types.append(doc.get("type", "unknown"))
+		# Null safety check
+		if doc != null and typeof(doc) == TYPE_DICTIONARY:
+			presented_types.append(doc.get("type", "unknown"))
+	
+	# Debug output for troubleshooting
+	#print("Required docs: ", required)
+	#print("Presented types: ", presented_types)
 	
 	for req_doc in required:
 		if not req_doc in presented_types:
 			result.add_violation("missing_document", req_doc)
 
-# Validate individual document
+# Validate individual document - FIXED with diplomatic immunity
 func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data: Dictionary):
+	# Null safety
+	if doc == null or typeof(doc) != TYPE_DICTIONARY:
+		result.add_violation("invalid_document", "Document is null or invalid")
+		return
+		
 	var doc_type = doc.get("type", "unknown")
+	
+	# SPECIAL HANDLING for diplomatic documents - FIXED
+	if doc_type == "diplomatic_passport":
+		# Diplomatic documents are always valid if they have basic fields
+		if doc.has("valid_until") and doc.get("immunity_status") == "full":
+			# Skip most checks for diplomatic immunity - only check basic validity
+			if not doc.has("valid_until"):
+				result.add_violation("missing_expiry", "diplomatic_passport")
+			elif _is_date_expired(doc.get("valid_until", "1990-01-01"), current_rules.current_date):
+				result.add_violation("expired_document", "diplomatic_passport expired")
+			return  # Skip other checks for diplomats
+	
+	# For regular reisepass from UdSSR, treat as normal document
+	if doc_type == "reisepass" and traveler_data.get("nationality") == "UdSSR":
+		# UdSSR passport is valid, continue with normal checks
+		pass
 	
 	# Check expiry date
 	if current_rules.check_expiry:
@@ -112,11 +149,18 @@ func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data
 
 # Check document expiry
 func _check_expiry_date(result: ValidationResult, doc: Dictionary, doc_type: String):
-	if not doc.has("gueltig_bis"):
+	var expiry_field = ""
+	
+	# Different documents use different field names
+	if doc.has("gueltig_bis"):
+		expiry_field = "gueltig_bis"
+	elif doc.has("valid_until"):
+		expiry_field = "valid_until"
+	else:
 		result.add_violation("missing_expiry", doc_type)
 		return
 		
-	var expiry = doc["gueltig_bis"]
+	var expiry = doc[expiry_field]
 	if _is_date_expired(expiry, current_rules.current_date):
 		result.add_violation("expired_document", doc_type + " expired: " + expiry)
 
@@ -215,14 +259,14 @@ func _check_watchlist(result: ValidationResult, traveler_data: Dictionary):
 			result.add_violation("on_watchlist", person.reason)
 			break
 
-# DDR-specific rules
+# DDR-specific rules - FIXED TYPO
 func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictionary, docs: Array):
 	var nationality = traveler_data.get("nationality", "")
 	
 	# Check PM-12 restriction (no border crossing)
 	if current_rules.check_pm12 and nationality == "DDR":
 		for doc in docs:
-			if doc.get("type") == "personalausweis":
+			if doc != null and doc.get("type") == "personalausweis":
 				if doc.get("pm12_vermerk", false):
 					result.add_violation("pm12_restriction", "Border crossing prohibited")
 	
@@ -230,25 +274,25 @@ func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictiona
 	if nationality == "DDR" and traveler_data.get("direction", "") == "ausreise":
 		var has_ausreise = false
 		for doc in docs:
-			if doc.get("type") == "ausreisegenehmigung":
+			if doc != null and doc.get("type") == "ausreisegenehmigung":
 				has_ausreise = true
 				break
 		
 		if not has_ausreise:
 			result.add_violation("missing_ausreisegenehmigung", "DDR citizens need exit permit")
 	
-	# Check transit visa for West Germans
+	# Check transit visa for West Germans - FIXED TYPO!
 	if nationality == "BRD":
 		var has_transit = false
 		for doc in docs:
-			if doc.get("type") == "transitvisum":
+			if doc != null and doc.get("type") == "transitvisum":
 				has_transit = true
 				if doc.get("route_restriction", "") == "direct_only":
 					result.add_warning("transit_restriction", "Must use direct route only")
 				break
 		
 		if not has_transit:
-			result.add_violation("missing_transitvisum", "West Germans need transit visa")
+			result.add_violation("missing_transitvisum", "West Germans need transit visa")  # FIXED!
 	
 	# Check for republikflucht risk indicators
 	if nationality == "DDR":
@@ -291,31 +335,35 @@ func _check_republikflucht_risk(result: ValidationResult, traveler_data: Diction
 # Utility: Check if date is expired
 func _is_date_expired(date1: String, date2: String) -> bool:
 	# Simple string comparison works for ISO date format YYYY-MM-DD
-	return date1 < date2
+	# date1 is expired if it's earlier than or equal to date2
+	return date1 <= date2
 
-# Update rules for new day
+# Update rules for new day - FIXED LOGIC
 func update_rules_for_day(day: int):
-	# Progressive difficulty
-	match day:
-		1, 2:
-			current_rules.check_expiry = true
-			current_rules.check_photo = false
-			current_rules.check_pkz = false
-		3, 4:
-			current_rules.check_photo = true
-		5, 6:
-			current_rules.check_pkz = true
-		7, 8, 9:
-			current_rules.check_stamps = true
-		_:
-			if day >= 10:
-				current_rules.check_pm12 = true
-			if day >= 15:
-				# Add more nationalities
-				current_rules.required_docs["UdSSR"] = ["reisepass", "visum"]
-			if day >= 20:
-				# Increase scrutiny
-				current_rules.required_docs["DDR"] = ["personalausweis", "arbeitsbuch"]
+	# Reset rules first
+	current_rules.check_expiry = true  # Always enabled
+	current_rules.check_photo = false
+	current_rules.check_pkz = false
+	current_rules.check_stamps = false
+	current_rules.check_pm12 = false
+	
+	# Progressive difficulty - FIXED
+	if day >= 3:
+		current_rules.check_photo = true
+	if day >= 5:
+		current_rules.check_pkz = true
+	if day >= 7:
+		current_rules.check_stamps = true
+	if day >= 10:
+		current_rules.check_pm12 = true
+	
+	# Extended rules for later days
+	if day >= 15:
+		# Add more nationalities
+		current_rules.required_docs["UdSSR"] = ["reisepass", "visum"]
+	if day >= 20:
+		# Increase scrutiny
+		current_rules.required_docs["DDR"] = ["personalausweis", "arbeitsbuch"]
 
 # Get denial reasons for UI
 func get_denial_reason_text(violation_code: String) -> String:
@@ -327,6 +375,7 @@ func get_denial_reason_text(violation_code: String) -> String:
 		"on_watchlist": "Person auf Fahndungsliste",
 		"pm12_restriction": "PM-12 Vermerk - Keine Grenzüberquerung",
 		"missing_ausreisegenehmigung": "Keine Ausreisegenehmigung",
+		"missing_transitvisum": "Fehlendes Transitvisum",  # FIXED
 		"forged_document": "Gefälschte Dokumente",
 		"invalid_pkz_format": "Ungültige Personenkennzahl",
 		"republikflucht_risk": "Fluchtgefahr"
