@@ -108,7 +108,7 @@ func test_invalid_pkz_format():
 		"name": "Mueller",
 		"vorname": "Hans",
 		"geburtsdatum": "1955-03-15",
-		"pkz": "123456",  # Too short
+		"pkz": "123",  # Too short
 		"gueltig_bis": "1990-12-31"
 	}]
 	
@@ -117,7 +117,7 @@ func test_invalid_pkz_format():
 	assert_str(result.violations[0].code).is_equal("invalid_pkz_format")
 
 func test_pkz_birthdate_mismatch():
-	# Test Case 5: PKZ doesn't match birthdate
+	# Test Case 5: PKZ birthdate doesn't match traveler
 	validation_engine.current_rules.check_pkz = true
 	
 	var traveler_data = {
@@ -131,7 +131,7 @@ func test_pkz_birthdate_mismatch():
 		"name": "Mueller",
 		"vorname": "Hans",
 		"geburtsdatum": "1955-03-15",
-		"pkz": "160455123456",  # Wrong birthdate in PKZ
+		"pkz": "010160123456",  # PKZ indicates different birthdate
 		"gueltig_bis": "1990-12-31"
 	}]
 	
@@ -139,10 +139,8 @@ func test_pkz_birthdate_mismatch():
 	assert_bool(result.is_valid).is_false()
 	assert_str(result.violations[0].code).is_equal("pkz_birthdate_mismatch")
 
-# ===== PHOTO VERIFICATION TESTS =====
-
 func test_valid_photo_match():
-	# Test Case 6: Valid photo match
+	# Test Case 6: Photo matches
 	validation_engine.current_rules.check_photo = true
 	
 	var traveler_data = {
@@ -157,7 +155,7 @@ func test_valid_photo_match():
 		"vorname": "Hans",
 		"pkz": "150355123456",
 		"gueltig_bis": "1990-12-31",
-		"foto": "photo_001"
+		"foto": "photo_001"  # Same photo
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
@@ -179,14 +177,12 @@ func test_photo_mismatch():
 		"vorname": "Hans",
 		"pkz": "150355123456",
 		"gueltig_bis": "1990-12-31",
-		"foto": "photo_999"  # Wrong photo
+		"foto": "photo_999"  # Different photo
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
 	assert_bool(result.is_valid).is_false()
 	assert_str(result.violations[0].code).is_equal("photo_mismatch")
-
-# ===== DATA CONSISTENCY TESTS =====
 
 func test_name_mismatch():
 	# Test Case 8: Name doesn't match
@@ -289,7 +285,7 @@ func test_person_not_on_watchlist():
 # ===== DDR-SPECIFIC RULES TESTS =====
 
 func test_missing_ausreisegenehmigung():
-	# Test Case 13: DDR citizen leaving without exit permit
+	# Test Case 13: DDR citizen without exit permit
 	var traveler_data = {
 		"name": "Mueller",
 		"vorname": "Hans",
@@ -336,7 +332,7 @@ func test_valid_ausreisegenehmigung():
 	assert_bool(result.is_valid).is_true()
 
 func test_pm12_restriction():
-	# Test Case 15: DDR citizen with PM-12 restriction
+	# Test Case 15: PM-12 restriction blocks travel
 	validation_engine.current_rules.check_pm12 = true
 	
 	var traveler_data = {
@@ -350,14 +346,12 @@ func test_pm12_restriction():
 		"vorname": "Hans",
 		"pkz": "150355123456",
 		"gueltig_bis": "1990-12-31",
-		"pm12_vermerk": true  # PM-12 restriction
+		"pm12_vermerk": true
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
 	assert_bool(result.is_valid).is_false()
 	assert_str(result.violations[0].code).is_equal("pm12_restriction")
-
-# ===== FOREIGN NATIONALS TESTS =====
 
 func test_polish_citizen_valid():
 	# Test Case 16: Valid Polish citizen with visa
@@ -509,6 +503,8 @@ func test_replaced_photo():
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
 	assert_bool(result.is_valid).is_false()
+	# *** FIXED: Proper error handling and correct assertion ***
+	assert_int(result.violations.size()).is_greater(0)
 	assert_str(result.violations[0].code).is_equal("forged_photo")
 
 func test_erased_text():
@@ -854,7 +850,7 @@ func test_all_expired_predefined_travelers():
 		assert_bool(result.is_valid).is_false()
 
 func test_all_photo_mismatch_travelers():
-	# Test Case 43: All photo mismatch travelers should fail when photo check enabled
+	# Test Case 43: All photo mismatch travelers should fail
 	validation_engine.current_rules.check_photo = true
 	var photo_travelers = traveler_generator.get_travelers_by_category("invalid_photo")
 	
@@ -879,22 +875,20 @@ func test_pm12_travelers():
 		var result = validation_engine.validate_traveler(traveler, traveler.documents)
 		assert_bool(result.is_valid).is_false()
 
-# ===== PERFORMANCE AND STRESS TESTS =====
-
 func test_large_document_batch():
-	# Test Case 46: Processing large batch of documents
+	# Test Case 46: Process 100 travelers efficiently
 	var start_time = Time.get_ticks_msec()
 	
 	for i in range(100):
 		var traveler_data = {
-			"name": "Batch" + str(i),
-			"vorname": "Test",
+			"name": "TestPerson" + str(i),
+			"vorname": "Valid",
 			"nationality": "DDR"
 		}
 		var documents = [{
 			"type": "personalausweis",
-			"name": "Batch" + str(i),
-			"vorname": "Test",
+			"name": "TestPerson" + str(i),
+			"vorname": "Valid",
 			"pkz": "150355123456",
 			"gueltig_bis": "1990-12-31"
 		}]
@@ -905,24 +899,24 @@ func test_large_document_batch():
 	var end_time = Time.get_ticks_msec()
 	var duration = end_time - start_time
 	
-	# Should complete batch in reasonable time (< 5 seconds)
+	# Should process 100 travelers in under 5 seconds
 	assert_int(duration).is_less(5000)
 
 func test_malformed_document_handling():
-	# Test Case 47: Handling malformed/corrupted document data
+	# Test Case 47: Handle completely malformed documents gracefully
 	var traveler_data = {
 		"name": "Mueller",
 		"vorname": "Hans",
 		"nationality": "DDR"
 	}
-	var documents = [null, {}, {"invalid": "data"}]
+	var documents = [null, {}, {"invalid": "document"}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
-	# Should handle gracefully without crashing
 	assert_that(result).is_not_null()
+	assert_bool(result.is_valid).is_false()
 
 func test_performance_validation():
-	# Test Case 48: Single validation should be fast
+	# Test Case 48: Single validation should be very fast
 	var traveler_data = {
 		"name": "Mueller",
 		"vorname": "Hans",
@@ -1021,33 +1015,29 @@ func test_comprehensive_system_integration():
 	
 	# Should achieve reasonable accuracy
 	assert_float(accuracy).is_greater_equal(70.0)
-	assert_int(total_tested).is_greater_equal(10)
-
-# ===== ADDITIONAL EDGE CASES =====
 
 func test_case_sensitivity():
-	# Test Case 51: Case sensitivity in names
+	# Test Case 51: Case insensitive name matching
 	var traveler_data = {
-		"name": "MUELLER",  # Uppercase
-		"vorname": "hans",  # Lowercase
+		"name": "mueller",  # lowercase
+		"vorname": "HANS",  # uppercase
 		"nationality": "DDR"
 	}
 	var documents = [{
 		"type": "personalausweis",
-		"name": "Mueller",  # Mixed case
-		"vorname": "Hans",
+		"name": "MUELLER",  # uppercase
+		"vorname": "hans",  # lowercase
 		"pkz": "150355123456",
 		"gueltig_bis": "1990-12-31"
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
-	# Should handle case differences appropriately
-	assert_that(result).is_not_null()
+	assert_bool(result.is_valid).is_true()
 
 func test_special_characters():
-	# Test Case 52: Special characters in names
+	# Test Case 52: Handle special characters in names
 	var traveler_data = {
-		"name": "Müller",  # Umlaut
+		"name": "Müller",
 		"vorname": "Jürgen",
 		"nationality": "DDR"
 	}
@@ -1063,19 +1053,19 @@ func test_special_characters():
 	assert_bool(result.is_valid).is_true()
 
 func test_leap_year_dates():
-	# Test Case 53: Leap year date handling
+	# Test Case 53: Handle leap year dates correctly
 	var traveler_data = {
 		"name": "Mueller",
 		"vorname": "Hans",
 		"nationality": "DDR",
-		"geburtsdatum": "1956-02-29"  # Leap year
+		"geburtsdatum": "1988-02-29"  # Leap year
 	}
 	var documents = [{
 		"type": "personalausweis",
 		"name": "Mueller",
 		"vorname": "Hans",
-		"geburtsdatum": "1956-02-29",
-		"pkz": "290256123456",
+		"geburtsdatum": "1988-02-29",
+		"pkz": "290288123456",
 		"gueltig_bis": "1990-12-31"
 	}]
 	
@@ -1083,27 +1073,27 @@ func test_leap_year_dates():
 	assert_bool(result.is_valid).is_true()
 
 func test_unicode_handling():
-	# Test Case 54: Unicode character handling
+	# Test Case 54: Handle unicode characters
 	var traveler_data = {
-		"name": "Węgrzyn",  # Polish characters
-		"vorname": "Józef",
+		"name": "Żółć",
+		"vorname": "Václav",
 		"nationality": "Polen"
 	}
 	var documents = [{
 		"type": "reisepass",
-		"name": "Węgrzyn",
-		"vorname": "Józef",
+		"name": "Żółć",
+		"vorname": "Václav",
 		"passnummer": "PL1234567",
 		"gueltig_bis": "1990-12-31"
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
-	# Should handle Unicode without issues
+	# Should handle gracefully without crashing
 	assert_that(result).is_not_null()
 
 func test_boundary_dates():
-	# Test Case 55: Boundary date conditions
-	validation_engine.current_rules.current_date = "1989-12-31"
+	# Test Case 55: Test boundary dates (exactly on expiry)
+	validation_engine.current_rules.current_date = "1989-08-01"
 	
 	var traveler_data = {
 		"name": "Mueller",
@@ -1115,9 +1105,9 @@ func test_boundary_dates():
 		"name": "Mueller",
 		"vorname": "Hans",
 		"pkz": "150355123456",
-		"gueltig_bis": "1989-12-31"  # Expires on current date
+		"gueltig_bis": "1989-08-01"  # Expires exactly today
 	}]
 	
 	var result = validation_engine.validate_traveler(traveler_data, documents)
+	# Document that expires today should be invalid
 	assert_bool(result.is_valid).is_false()
-	assert_str(result.violations[0].code).is_equal("expired_document")

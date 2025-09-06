@@ -53,6 +53,11 @@ func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> Vali
 		result.add_violation("null_data", "Traveler data or documents are null")
 		return result
 	
+	# *** FIXED: Check for diplomatic immunity FIRST ***
+	if _has_diplomatic_immunity(traveler_data, presented_docs):
+		# Full diplomatic immunity bypasses ALL validation
+		return result  # Return valid result immediately
+	
 	# Step 1: Determine required documents based on nationality
 	var required_docs = _get_required_documents(traveler_data.get("nationality", "unknown"))
 	
@@ -73,6 +78,17 @@ func validate_traveler(traveler_data: Dictionary, presented_docs: Array) -> Vali
 	_check_ddr_specific_rules(result, traveler_data, presented_docs)
 	
 	return result
+
+# *** FIXED: New function to check diplomatic immunity ***
+func _has_diplomatic_immunity(traveler_data: Dictionary, presented_docs: Array) -> bool:
+	# Check if traveler has diplomatic status
+	if traveler_data.get("diplomatic_status", false):
+		# Check for diplomatic passport with full immunity
+		for doc in presented_docs:
+			if doc != null and doc.get("type") == "diplomatic_passport":
+				if doc.get("immunity_status") == "full":
+					return true
+	return false
 
 # Get required documents based on nationality
 func _get_required_documents(nationality: String) -> Array:
@@ -100,13 +116,6 @@ func _validate_document(result: ValidationResult, doc: Dictionary, traveler_data
 		return
 		
 	var doc_type = doc.get("type", "unknown")
-	
-	# *** FIXED: SPECIAL HANDLING for diplomatic documents ***
-	if doc_type == "diplomatic_passport":
-		# Diplomatic documents with full immunity bypass ALL checks
-		if doc.get("immunity_status") == "full":
-			return  # Skip all validation for full diplomatic immunity
-		# If no full immunity, treat as regular passport
 	
 	# Regular document validation
 	var doc_name = doc.get("name", "")
@@ -185,55 +194,53 @@ func _validate_pkz(result: ValidationResult, doc: Dictionary, traveler_data: Dic
 	if traveler_birthdate != "" and pkz_birthdate != traveler_birthdate:
 		result.add_violation("pkz_birthdate_mismatch", "PKZ birthdate doesn't match")
 
-# Check stamps
+# Stamp validation
 func _check_stamps(result: ValidationResult, doc: Dictionary):
 	var stamps = doc.get("stamps", [])
 	
-	for stamp_data in stamps:
-		if stamp_data == null or typeof(stamp_data) != TYPE_DICTIONARY:
-			continue
-			
-		var stamp_type = stamp_data.get("type", "")
-		var stamp_location = stamp_data.get("location", "")
+	for stamp in stamps:
+		var stamp_type = stamp.get("type", "")
+		var location = stamp.get("location", "")
+		var date = stamp.get("date", "")
 		
-		# Check valid stamp locations
+		# Check if stamp location is valid
 		if valid_stamp_patterns.has(stamp_type):
-			if not stamp_location in valid_stamp_patterns[stamp_type]:
-				result.add_violation("invalid_stamp_location", "Invalid stamp location: " + stamp_location)
+			if not location in valid_stamp_patterns[stamp_type]:
+				result.add_violation("invalid_stamp_location", "Invalid stamp location")
 		
-		# Check for future-dated stamps
-		if stamp_data.has("date"):
-			if _is_date_expired(current_rules.current_date, stamp_data["date"]):
-				result.add_violation("future_stamp", "Stamp dated in future: " + stamp_data["date"])
+		# Check if stamp date is in the future
+		if _is_date_expired(current_rules.current_date, date):
+			result.add_violation("future_stamp", "Stamp date is in the future")
 
-# Check for forgery indicators
+# *** FIXED: Check for document forgery indicators ***
 func _check_forgery_indicators(result: ValidationResult, doc: Dictionary):
-	var forgery_signs = doc.get("forgery_indicators", [])
+	var forgery_indicators = doc.get("forgery_indicators", [])
 	
-	for forgery_indicator in forgery_signs:
-		match forgery_indicator:
+	for indicator in forgery_indicators:
+		match indicator:
 			"altered_date":
-				result.add_violation("forged_date", "Date appears altered")
+				result.add_violation("forged_date", "Document date has been altered")
 			"fake_stamp":
-				result.add_violation("forged_stamp", "Stamp appears counterfeit")
+				result.add_violation("forged_stamp", "Document contains fake stamp")
 			"photo_replaced":
-				result.add_violation("forged_photo", "Photo appears replaced")
+				result.add_violation("forged_photo", "Document photo has been replaced")
 			"erased_text":
-				result.add_violation("forged_text", "Text has been erased/modified")
-			_:
-				result.add_violation("suspected_forgery", forgery_indicator)
+				result.add_violation("forged_text", "Document text has been erased")
 
-# Check against watchlist
+# Watchlist checking
 func _check_watchlist(result: ValidationResult, traveler_data: Dictionary):
-	var t_name = traveler_data.get("name", "")
-	var t_vorname = traveler_data.get("vorname", "")
+	var traveler_name = traveler_data.get("name", "").to_lower()
+	var traveler_vorname = traveler_data.get("vorname", "").to_lower()
 	
 	for person in watchlist:
-		if person.name == t_name and person.vorname == t_vorname:
-			result.add_violation("on_watchlist", person.reason)
+		var list_name = person.get("name", "").to_lower()
+		var list_vorname = person.get("vorname", "").to_lower()
+		
+		if traveler_name == list_name and traveler_vorname == list_vorname:
+			result.add_violation("on_watchlist", person.get("reason", "Unknown reason"))
 			break
 
-# *** FIXED: DDR-specific rules - ALL TYPOS CORRECTED ***
+# *** COMPLETELY FIXED: DDR-specific rules with correct spelling ***
 func _check_ddr_specific_rules(result: ValidationResult, traveler_data: Dictionary, docs: Array):
 	var nationality = traveler_data.get("nationality", "")
 	
